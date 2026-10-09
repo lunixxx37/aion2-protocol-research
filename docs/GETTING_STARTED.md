@@ -89,7 +89,6 @@ world session:
 
 ```powershell
 python tools/locate_session_key.py `
-  --pid PROCESS_ID `
   --key-out artifacts\session-key.bin `
   --json artifacts\session-key-locator.json
 
@@ -101,13 +100,32 @@ python tools/decrypt_c2s_rc4.py `
   --json artifacts\c2s-report.json
 ```
 
+The locator automatically selects `AION2.exe` through its established world
+connection on remote port 13328. Supply `--pid PROCESS_ID` only when automatic
+selection is unsuitable.
+
+For a companion that remains open across reconnects, start the monitor before
+or after entering the world:
+
+```powershell
+python tools/watch_session_key.py `
+  --key-out artifacts\current-session-key.bin `
+  --json artifacts\session-key-monitor.json `
+  --events-jsonl artifacts\session-key-events.jsonl
+```
+
+It waits for the connection, refreshes the ignored local key file whenever the
+session changes, and performs cached state checks between reconnects. Stop it
+with `Ctrl+C`.
+
 The revision-3527 fast path was measured across ten repeated runs at 164-230 ms
 internally and 253-324 ms including Python startup. It derives the vtable from
 runtime code, finds the profiled `network_owner`, and requires two valid RC4
 permutations carrying the same 214-byte key. A standalone client already owns
 its generated key and skips runtime recovery entirely. RSA/BIGNUM recovery
 remains available in the repository for an older capture whose live session
-state is no longer available.
+state is no longer available. In a live monitor test, the automatic PID lookup
+plus first key recovery took 214 ms and cached polls averaged 0.47 ms.
 
 Every file below `artifacts/`, except its README, is ignored by Git. Handshake
 reports and plaintext samples may contain session values.

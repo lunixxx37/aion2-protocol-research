@@ -130,17 +130,29 @@ bytes.
 ## Fast original-client session-key recovery
 
 For a live revision-3527 client, recover the active 214-byte RC4 key directly
-from the two validated runtime state objects:
+from the two validated runtime state objects. The locator finds `AION2.exe`
+from its established world connection, so a PID is normally unnecessary:
 
 ```powershell
-$aionPid = (Get-NetTCPConnection -RemotePort 13328 -State Established |
-  Select-Object -First 1).OwningProcess
-
 python tools/locate_session_key.py `
-  --pid $aionPid `
   --key-out artifacts\session-key.bin `
   --json artifacts\session-key-locator.json
 ```
+
+Use the monitor for normal companion-tool startup. It waits for the world
+connection, performs the full lookup once, and then reuses the process-local
+addresses until a reconnect or process restart requires rediscovery:
+
+```powershell
+python tools/watch_session_key.py `
+  --key-out artifacts\current-session-key.bin `
+  --json artifacts\session-key-monitor.json `
+  --events-jsonl artifacts\session-key-events.jsonl
+```
+
+Stop it with `Ctrl+C`. The default 250 ms poll interval can be changed with
+`--poll-interval`. The event report contains only the key fingerprint and
+runtime metadata; the raw 214-byte key is written only to `--key-out`.
 
 The JSON report contains key hashes and structural validation, not the key
 bytes. `--key-out` is optional and writes the raw key only to the specified
@@ -159,8 +171,10 @@ The locator derives the RC4 vtable from runtime code, searches the profiled
 network-owner arena, and accepts only two states with valid 256-byte RC4
 permutations and the same key. Ten repeated local tests completed the internal
 lookup in 164-230 ms (197 ms average), or 253-324 ms including Python process
-startup. The profile is revision-specific; `--full-scan-fallback` explicitly
-enables the older slow search if a later client build moves the owner object.
+startup. A live automatic-PID test completed in 214 ms; subsequent monitor
+polls took 0.36-0.83 ms (0.47 ms average). The profile is revision-specific;
+`--full-scan-fallback` explicitly enables the older slow search if a later
+client build moves the owner object.
 
 ## Original-client RSA recovery fallback
 

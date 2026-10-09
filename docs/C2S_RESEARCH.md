@@ -521,6 +521,8 @@ process-memory inspection. It neither injects code nor pauses the process.
 - `scan_process_rsa.py` finds a captured modulus and candidate RSA layouts.
 - `locate_session_key.py` follows the profiled owner arena to the two live RC4
   states and exports their shared 214-byte key.
+- `watch_session_key.py` discovers the live world process and refreshes the
+  ignored local key file across session changes.
 - `scan_process_rsa_public.py` locates runtime public-key objects.
 - `scan_process_range.py` performs bounded pattern searches.
 - `export_openssl_rsa.py` validates and exports all private/CRT components.
@@ -572,6 +574,15 @@ reproduced all 2,242 frames and 28,520 encrypted body bytes of the controlled
 capture. The full-memory fallback is opt-in through `--full-scan-fallback`, so
 a version-profile miss is reported quickly instead of causing a minutes-long
 startup delay.
+
+The connection-aware monitor removes the need to enter or rediscover a PID.
+It can start before the world connection exists and reinitializes its cached
+process-local addresses after a disconnect, reconnect, or process restart. In
+a 30-poll live test, automatic discovery and the initial key event completed in
+257 ms including monitor setup. The following 29 cached polls took 0.36-0.83 ms
+each (0.47 ms average). With the default 250 ms interval, normal readiness is
+therefore bounded mainly by one poll interval plus the initial profile lookup
+rather than a whole-memory scan.
 
 A standalone protocol client has a different lifecycle: it generates and owns
 its private key before sending `10 36`, so key availability is immediate and

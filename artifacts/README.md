@@ -16,9 +16,14 @@ python tools/probe_tick_plaintext.py "C:\path\to\session.pcapng" `
 python tools/locate_openssl_rsa.py --pid PROCESS_ID `
   --json artifacts\openssl-rsa-locator.json
 
-python tools/locate_session_key.py --pid PROCESS_ID `
+python tools/locate_session_key.py `
   --key-out artifacts\session-key.bin `
   --json artifacts\session-key-locator.json
+
+python tools/watch_session_key.py `
+  --key-out artifacts\current-session-key.bin `
+  --json artifacts\session-key-monitor.json `
+  --events-jsonl artifacts\session-key-events.jsonl
 
 python tools/find_x64_calls.py --pid PROCESS_ID `
   --target 0xRUNTIME_ADDRESS `

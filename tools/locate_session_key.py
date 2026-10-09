@@ -46,6 +46,10 @@ WRITABLE_PROTECTIONS = {0x04, 0x08, 0x40, 0x80}
 LIST_MODULES_ALL = 0x03
 RC4_KEY_LENGTH = 214
 RC4_STATE_SIZE = 0x124
+AF_INET = 2
+MIB_TCP_STATE_ESTABLISHED = 5
+TCP_TABLE_OWNER_PID_ALL = 5
+ERROR_INSUFFICIENT_BUFFER = 122
 PREFERRED_HEAP_START = 0
 PREFERRED_HEAP_END = 0x1_0000_0000
 OWNER_ARENA_START = 0x2_0000_0000
@@ -62,6 +66,17 @@ class MODULEINFO(ctypes.Structure):
         ("lpBaseOfDll", ctypes.c_void_p),
         ("SizeOfImage", wintypes.DWORD),
         ("EntryPoint", ctypes.c_void_p),
+    ]
+
+
+class MIB_TCPROW_OWNER_PID(ctypes.Structure):
+    _fields_ = [
+        ("dwState", wintypes.DWORD),
+        ("dwLocalAddr", wintypes.DWORD),
+        ("dwLocalPort", wintypes.DWORD),
+        ("dwRemoteAddr", wintypes.DWORD),
+        ("dwRemotePort", wintypes.DWORD),
+        ("dwOwningPid", wintypes.DWORD),
     ]
 
 
@@ -225,6 +240,86 @@ class ProcessReader:
             "base": int(info.lpBaseOfDll or 0),
             "size": int(info.SizeOfImage),
         }
+
+
+def established_tcp_pids(remote_port: int) -> list[int]:
+    """Return PIDs owning established IPv4 connections to remote_port."""
+    if os.name != "nt":
+        raise SystemExit("automatic PID discovery is Windows-only")
+    iphlpapi = ctypes.WinDLL("iphlpapi", use_last_error=True)
+    iphlpapi.GetExtendedTcpTable.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(wintypes.DWORD),
+        wintypes.BOOL,
+        wintypes.ULONG,
+        wintypes.DWORD,
+        wintypes.ULONG,
+    ]
+    iphlpapi.GetExtendedTcpTable.restype = wintypes.DWORD
+
+    size = wintypes.DWORD()
+    result = iphlpapi.GetExtendedTcpTable(
+        None,
+        ctypes.byref(size),
+        True,
+        AF_INET,
+        TCP_TABLE_OWNER_PID_ALL,
+        0,
+    )
+    if result not in (0, ERROR_INSUFFICIENT_BUFFER):
+        raise SystemExit(f"GetExtendedTcpTable sizing failed with error {result}")
+    buffer = ctypes.create_string_buffer(size.value)
+    result = iphlpapi.GetExtendedTcpTable(
+        buffer,
+        ctypes.byref(size),
+        True,
+        AF_INET,
+        TCP_TABLE_OWNER_PID_ALL,
+        0,
+    )
+    if result != 0:
+        raise SystemExit(f"GetExtendedTcpTable failed with error {result}")
+
+    count = struct.unpack_from("<I", buffer.raw, 0)[0]
+    row_size = ctypes.sizeof(MIB_TCPROW_OWNER_PID)
+    pids: set[int] = set()
+    for index in range(count):
+        offset = 4 + index * row_size
+        row = MIB_TCPROW_OWNER_PID.from_buffer_copy(buffer.raw, offset)
+        port = int.from_bytes(
+            struct.pack("<I", row.dwRemotePort)[:2], "big"
+        )
+        if row.dwState == MIB_TCP_STATE_ESTABLISHED and port == remote_port:
+            pids.add(int(row.dwOwningPid))
+    return sorted(pids)
+
+
+def discover_world_pid(remote_port: int, process_name: str) -> tuple[int, dict]:
+    candidates = established_tcp_pids(remote_port)
+    matches: list[int] = []
+    inspected: list[dict] = []
+    for pid in candidates:
+        try:
+            with ProcessReader(pid) as reader:
+                module = reader.main_module()
+        except SystemExit as error:
+            inspected.append({"pid": pid, "error": str(error)})
+            continue
+        inspected.append({"pid": pid, "process": module["name"]})
+        if module["name"].lower() == process_name.lower():
+            matches.append(pid)
+    if len(matches) != 1:
+        raise SystemExit(
+            f"expected one established {process_name} connection to remote port "
+            f"{remote_port}, found {len(matches)}"
+        )
+    return matches[0], {
+        "method": "GetExtendedTcpTable",
+        "remote_port": remote_port,
+        "process_name": process_name,
+        "tcp_candidate_pids": candidates,
+        "inspected": inspected,
+    }
 
 
 def usable_region(region: dict) -> bool:
@@ -528,7 +623,22 @@ def select_key(hits: list[dict], keys: dict[str, bytes]) -> tuple[str, bytes] | 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--pid", required=True, type=int, help="Aion2 process ID")
+    parser.add_argument(
+        "--pid",
+        type=int,
+        help="Aion2 process ID; omit to discover it from the world connection",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=13328,
+        help="world server remote port used for automatic PID discovery",
+    )
+    parser.add_argument(
+        "--process-name",
+        default="AION2.exe",
+        help="main executable name used to validate an automatically found PID",
+    )
     parser.add_argument(
         "--owner",
         type=lambda value: int(value, 0),
@@ -561,7 +671,15 @@ def main() -> int:
         expected = None
 
     started = time.perf_counter()
-    with ProcessReader(args.pid) as reader:
+    discovery_started = time.perf_counter()
+    if args.pid is None:
+        target_pid, discovery = discover_world_pid(args.port, args.process_name)
+    else:
+        target_pid = args.pid
+        discovery = {"method": "explicit_pid"}
+    discovery_elapsed = time.perf_counter() - discovery_started
+
+    with ProcessReader(target_pid) as reader:
         module_started = time.perf_counter()
         module = reader.main_module()
         module_elapsed = time.perf_counter() - module_started
@@ -613,7 +731,8 @@ def main() -> int:
     total_elapsed = time.perf_counter() - started
     report = {
         "schema": "aion2-session-key-locator/v1",
-        "pid": args.pid,
+        "pid": target_pid,
+        "pid_discovery": discovery,
         "module": {
             "name": module["name"],
             "base": f"0x{module['base']:016X}",
@@ -629,6 +748,7 @@ def main() -> int:
         },
         "state_objects": hits,
         "timings_ms": {
+            "pid_discovery": round(discovery_elapsed * 1000, 3),
             "module": round(module_elapsed * 1000, 3),
             "signature": round(signature_elapsed * 1000, 3),
             "state_scan": round(state_elapsed * 1000, 3),
