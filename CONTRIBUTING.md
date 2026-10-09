@@ -22,6 +22,10 @@ Mark findings as locally confirmed, inferred, or sourced publicly. A new packet
 layout should be checked against more than one occurrence; session crypto
 changes should also be validated on a fresh connection.
 
+Opcode changes belong in `protocol/opcodes.json`. Run
+`python tools/generate_opcode_docs.py --write` and commit the regenerated
+`docs/OPCODES.md`; CI verifies that both files agree.
+
 ## Sensitive local data
 
 Do not commit captures, private keys, OAEP plaintexts, decrypted session

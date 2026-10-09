@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-`tools/` contains standalone Python utilities. `aion2_client_crypto.py` is the reusable world-handshake and continuous C2S RC4 implementation; `analyze_pcaps.py`, `decrypt_handshake.py`, and `decrypt_c2s_rc4.py` form the offline decoding path. The Windows-only scanners and disassemblers read process memory to recover or inspect runtime state. `docs/PROTOCOL.md` is the protocol specification, `docs/OPCODES.md` records opcode evidence, and `docs/C2S_RESEARCH.md` preserves the reverse-engineering trail. `artifacts/README.md` documents local reports; all generated artifacts are ignored because they may contain keys or session data.
+`tools/` contains standalone Python utilities. `aion2_client_crypto.py` is the reusable world-handshake and continuous C2S RC4 implementation; `analyze_pcaps.py`, `decrypt_handshake.py`, and `decrypt_c2s_rc4.py` form the offline decoding path. The Windows-only scanners and disassemblers read process memory to recover or inspect runtime state. `protocol/opcodes.json` is the canonical opcode registry and generates `docs/OPCODES.md`; `docs/PROTOCOL.md` specifies the wire format, while `docs/C2S_RESEARCH.md` preserves the reverse-engineering trail. `artifacts/README.md` documents local reports; all generated artifacts are ignored because they may contain keys or session data.
 
 ## Build, Test, and Development Commands
 
@@ -14,7 +14,7 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
-Run the deterministic crypto/handshake test with `python tools/aion2_client_crypto.py --self-test`. Compile every utility with `python -m compileall -q tools`. Use `python tools/<name>.py --help` to inspect a tool without touching captures or processes.
+Run the deterministic crypto/handshake test with `python tools/aion2_client_crypto.py --self-test`. Validate generated opcode documentation with `python tools/generate_opcode_docs.py --check`. Compile every utility with `python -m compileall -q tools`. Use `python tools/<name>.py --help` to inspect a tool without touching captures or processes.
 
 ## Coding Style & Naming Conventions
 

@@ -44,6 +44,7 @@ bytes across two independently keyed world sessions.
 - [Protocol specification](docs/PROTOCOL.md)
 - [C2S reverse-engineering report](docs/C2S_RESEARCH.md)
 - [Opcode catalog](docs/OPCODES.md)
+- [Machine-readable opcode registry](protocol/opcodes.json)
 - [Sources and confidence levels](docs/SOURCES.md)
 - [Contributing](CONTRIBUTING.md)
 
@@ -74,6 +75,10 @@ connection-specific cryptographic layer:
 - OAEP-SHA1 recovery of the 214-byte session secret;
 - continuous body-only RC4 framing for outgoing C2S packets;
 - strict unsigned-varint framing helpers.
+
+`protocol/opcodes.json` is the canonical opcode source for code generators and
+packet codecs. `docs/OPCODES.md` is generated from it, so the human and
+machine-readable catalogs remain synchronized.
 
 A standalone client owns its generated private key, so it does not need the
 process-memory recovery tools. Those tools exist to analyze captures produced

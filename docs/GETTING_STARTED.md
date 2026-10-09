@@ -114,6 +114,12 @@ A complete client still needs:
 4. Semantic codecs for movement, target selection, skills, and inventory.
 5. Buffered S2C processing, including nested LZ4 bundles.
 
-Record new opcode mappings with a confidence level in `OPCODES.md`. Move
-confirmed wire rules into `PROTOCOL.md` and preserve the supporting analysis in
-`C2S_RESEARCH.md`.
+Record new opcode mappings with a confidence level in
+`protocol/opcodes.json`. Move confirmed wire rules into `PROTOCOL.md` and
+preserve the supporting analysis in `C2S_RESEARCH.md`. Regenerate the Markdown
+catalog after editing the registry:
+
+```powershell
+python tools/generate_opcode_docs.py --write
+python tools/generate_opcode_docs.py --check
+```

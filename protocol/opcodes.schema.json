@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lunixxx37/aion2-protocol-research/blob/main/protocol/opcodes.schema.json",
+  "title": "Aion 2 opcode registry",
+  "type": "object",
+  "required": ["schema_version", "capture_snapshot", "confidence_levels", "opcodes", "observations"],
+  "properties": {
+    "$schema": {"type": "string"},
+    "schema_version": {"const": 1},
+    "capture_snapshot": {
+      "type": "object",
+      "required": ["date", "client_revisions", "sessions", "total_frames", "rc4_body_bytes", "client_time_frames"],
+      "properties": {
+        "date": {"type": "string", "format": "date"},
+        "client_revisions": {"type": "array", "items": {"type": "integer"}, "uniqueItems": true},
+        "sessions": {"type": "integer", "minimum": 1},
+        "total_frames": {"type": "integer", "minimum": 1},
+        "rc4_body_bytes": {"type": "integer", "minimum": 1},
+        "client_time_frames": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "confidence_levels": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    },
+    "opcodes": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/opcode"}
+    },
+    "observations": {
+      "type": "object",
+      "required": ["world_c2s"],
+      "properties": {
+        "world_c2s": {
+          "type": "object",
+          "propertyNames": {"pattern": "^[0-9A-F]{4}$"},
+          "additionalProperties": {"$ref": "#/$defs/observation"}
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "body_lengths": {
+      "type": "array",
+      "items": {"type": "integer", "minimum": 2},
+      "uniqueItems": true
+    },
+    "field": {
+      "type": "object",
+      "required": ["offset", "type", "name"],
+      "properties": {
+        "offset": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "string"}]},
+        "type": {"type": "string"},
+        "name": {"type": "string"},
+        "status": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "opcode": {
+      "type": "object",
+      "required": ["wire", "phase", "directions", "name", "encryption", "confidence", "body_lengths", "fields"],
+      "properties": {
+        "wire": {"type": "string", "pattern": "^[0-9A-F]{4}$"},
+        "phase": {"enum": ["login", "lobby", "world"]},
+        "directions": {
+          "type": "array",
+          "items": {"enum": ["C2S", "S2C"]},
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "name": {"type": "string"},
+        "encryption": {"enum": ["clear", "rc4", "unknown"]},
+        "confidence": {
+          "enum": ["locally-confirmed", "publicly-confirmed", "parser-based", "inferred", "observed", "hypothesis"]
+        },
+        "body_lengths": {"$ref": "#/$defs/body_lengths"},
+        "notes": {"type": "string"},
+        "fields": {"type": "array", "items": {"$ref": "#/$defs/field"}}
+      },
+      "additionalProperties": false
+    },
+    "observation": {
+      "type": "object",
+      "required": ["frames", "body_lengths"],
+      "properties": {
+        "frames": {"type": "integer", "minimum": 1},
+        "body_lengths": {"$ref": "#/$defs/body_lengths"},
+        "notes": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
