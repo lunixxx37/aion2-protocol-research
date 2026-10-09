@@ -588,6 +588,34 @@
       ]
     },
     {
+      "wire": "0437",
+      "phase": "world",
+      "directions": ["C2S"],
+      "name": "CLIENT_TIMESTAMP_MARKER_04",
+      "encryption": "rc4",
+      "confidence": "inferred",
+      "body_lengths": [10],
+      "notes": "Timestamp-only family-37 marker observed near movement and skill transitions. Its exact application meaning and distinction from 05 37 remain open.",
+      "fields": [
+        {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
+        {"offset": 2, "type": "u64le", "name": "client_unix_ms", "status": "confirmed in every retained plaintext sample"}
+      ]
+    },
+    {
+      "wire": "0537",
+      "phase": "world",
+      "directions": ["C2S"],
+      "name": "CLIENT_TIMESTAMP_MARKER_05",
+      "encryption": "rc4",
+      "confidence": "inferred",
+      "body_lengths": [10],
+      "notes": "Timestamp-only family-37 marker observed near movement and skill transitions. Its exact application meaning and distinction from 04 37 remain open.",
+      "fields": [
+        {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
+        {"offset": 2, "type": "u64le", "name": "client_unix_ms", "status": "confirmed in every retained plaintext sample"}
+      ]
+    },
+    {
       "wire": "1837",
       "phase": "world",
       "directions": ["C2S"],

@@ -42,8 +42,10 @@ Snapshot date: `2026-10-09`; client revisions:
 | `03 36` | `0x3603` | world | S2C | `WORLD_PING` | — | — | parser-based |
 | `03 37` | `0x3703` | world | C2S | `CLIENT_JUMP_MOVEMENT` | 244 | 40 | inferred |
 | `03 38` | `0x3803` | world | S2C | `NPC_POSITION` | — | — | parser-based |
+| `04 37` | `0x3704` | world | C2S | `CLIENT_TIMESTAMP_MARKER_04` | 29 | 10 | inferred |
 | `04 38` | `0x3804` | world | S2C | `DIRECT_DAMAGE` | — | — | publicly-confirmed |
 | `04 8D` | `0x8D04` | world | S2C | `NICKNAME_OR_OWNER` | — | — | parser-based |
+| `05 37` | `0x3705` | world | C2S | `CLIENT_TIMESTAMP_MARKER_05` | 27 | 10 | inferred |
 | `05 38` | `0x3805` | world | S2C | `DAMAGE_OVER_TIME` | — | — | parser-based |
 | `05 E0` | `0xE005` | world | S2C | `GROGGY_OR_GUARD` | — | — | parser-based |
 | `06 38` | `0x3806` | world | S2C | `CAST_END_OR_DEFENSE` | — | — | parser-based |
@@ -97,10 +99,8 @@ Snapshot date: `2026-10-09`; client revisions:
 | `17 90` | `0x9017` | 144 | 10 | The three retained plaintext samples were byte-identical. |
 | `0B 37` | `0x370B` | 114 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `51 36` | `0x3651` | 56 | 6 | Observed after successful RC4 decryption; semantics not assigned. |
-| `04 37` | `0x3704` | 29 | 10 | Observed after successful RC4 decryption; semantics not assigned. |
 | `06 37` | `0x3706` | 28 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `11 37` | `0x3711` | 28 | — | Observed after successful RC4 decryption; semantics not assigned. |
-| `05 37` | `0x3705` | 27 | 10 | Observed after successful RC4 decryption; semantics not assigned. |
 | `56 8D` | `0x8D56` | 15 | 4 | Observed after successful RC4 decryption; semantics not assigned. |
 | `36 36` | `0x3636` | 14 | 18 | Observed after successful RC4 decryption; semantics not assigned. |
 | `0A 37` | `0x370A` | 10 | — | Observed after successful RC4 decryption; semantics not assigned. |
@@ -256,6 +256,24 @@ Six 03 37 samples at approximately 10 Hz described the rising and falling phases
 | 19 | `f32le[3]` | `velocity_xyz` | inferred; Z follows the controlled jump arc |
 | 31 | `u8` | `movement_mode` | observed; 0x01 in the controlled jump |
 | 32 | `u64le` | `client_unix_ms` | confirmed |
+
+### `04 37` — `CLIENT_TIMESTAMP_MARKER_04`
+
+Timestamp-only family-37 marker observed near movement and skill transitions. Its exact application meaning and distinction from 05 37 remain open.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `u64le` | `client_unix_ms` | confirmed in every retained plaintext sample |
+
+### `05 37` — `CLIENT_TIMESTAMP_MARKER_05`
+
+Timestamp-only family-37 marker observed near movement and skill transitions. Its exact application meaning and distinction from 04 37 remain open.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `u64le` | `client_unix_ms` | confirmed in every retained plaintext sample |
 
 ### `0E 37` — `CLIENT_DODGE_REQUEST`
 

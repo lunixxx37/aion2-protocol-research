@@ -412,6 +412,11 @@ Several useful structural observations are already reproducible:
   exactly 10,000 between consecutive retained samples, followed by one variable
   byte. This is consistent with ten-second monotonic telemetry, but the clock
   source and final-byte meaning remain open.
+- `04 37` and `05 37` are timestamp-only markers with the exact layout
+  `opcode:bytes[2] || client_unix_ms:u64le`. All 29 and 27 bodies respectively
+  in the four-session snapshot are exactly 10 bytes long, and every retained
+  plaintext value matches the packet timeline. Both occur near movement and
+  skill transitions; their exact semantic distinction remains open.
 - Sampled `3A 38` and `3C 38` packets are opcode-only.
 - `17 90` repeatedly carries the same short structured body in sampled traffic.
 - `40 8D` contains a length-delimited zlib stream. Its declared decompressed
@@ -822,3 +827,5 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
   object into the packet builder.
 - Reconstructed the independent `-lp` launcher container as Base64-wrapped
   AES-256-ECB with strict PKCS#7 padding and added a redacting decoder.
+- Promoted `04 37` and `05 37` from anonymous observations to timestamp-marker
+  layouts while deliberately leaving their action-level distinction unnamed.
