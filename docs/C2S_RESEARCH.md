@@ -519,6 +519,8 @@ process-memory inspection. It neither injects code nor pauses the process.
 ### 6.2 Read-only tools
 
 - `scan_process_rsa.py` finds a captured modulus and candidate RSA layouts.
+- `locate_session_key.py` follows the profiled owner arena to the two live RC4
+  states and exports their shared 214-byte key.
 - `scan_process_rsa_public.py` locates runtime public-key objects.
 - `scan_process_range.py` performs bounded pattern searches.
 - `export_openssl_rsa.py` validates and exports all private/CRT components.
@@ -554,16 +556,22 @@ connection. A passive companion therefore has to recover the matching key (or
 the resulting 214-byte OAEP plaintext) after each reconnect; a key exported
 from an earlier process run does not apply to the next session.
 
-The current generic recovery path is a research fallback. In the controlled
+The generic RSA/BIGNUM recovery path is a research fallback. In the controlled
 session it made several passes over roughly 17-22 GB of readable virtual
-memory, so it took minutes rather than milliseconds. This is not the intended
-startup path for an end-user tool. The runtime ownership chain already exposes
-the RSA handler at `network_owner + 0xE10` and the two RC4 states at
-`network_owner + 0xE20` / `network_owner + 0xE30`. A production passive tool
-should first locate that small owner object and read the session state through
-the stable chain, using the full-memory scan only as a version-change fallback.
-The targeted locator still needs to be implemented and benchmarked before a
-sub-second startup claim can be made.
+memory, so it took minutes. `locate_session_key.py` now implements the intended
+fast path instead. It derives the RC4 vtable from a constructor signature,
+checks the profiled `network_owner` arena, and follows `+0xE20` / `+0xE30` to
+the two live states. A result is accepted only when both objects contain valid
+256-byte permutations and the same 214-byte key.
+
+Across ten repeated revision-3527 tests, the complete internal lookup took
+164-230 ms (197 ms average). End-to-end wall time including Python startup was
+253-324 ms (285 ms average). All ten keys matched the independently decrypted
+OAEP plaintext. Exporting the raw key and passing it to `decrypt_c2s_rc4.py`
+reproduced all 2,242 frames and 28,520 encrypted body bytes of the controlled
+capture. The full-memory fallback is opt-in through `--full-scan-fallback`, so
+a version-profile miss is reported quickly instead of causing a minutes-long
+startup delay.
 
 A standalone protocol client has a different lifecycle: it generates and owns
 its private key before sending `10 36`, so key availability is immediate and
@@ -641,4 +649,7 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
   Dodge request/movement sequence in families `37` and `38`.
 - Implemented `aion2_client_crypto.py` with standalone RSA handshake generation,
   OAEP recovery, continuous C2S framing, and deterministic self-tests.
+- Implemented and benchmarked direct live-session recovery through the owner
+  arena and paired RC4 states, reducing lookup from minutes to about 0.2 seconds
+  internally on the investigated revision.
 - Identified and verified the inner zlib container carried by C2S `40 8D`.

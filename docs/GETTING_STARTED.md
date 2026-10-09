@@ -83,23 +83,31 @@ unsigned-varint bytes do not.
 
 ## 4. Decode an existing capture
 
-First obtain the ephemeral RSA key belonging to the captured connection. The
-original client retains that key only for the corresponding world session. A
-standalone client already owns its generated key and skips this analysis step.
+For a running original client, recover the active RC4 key directly from its two
+validated runtime state objects. The key and every address belong only to that
+world session:
 
 ```powershell
-python tools/decrypt_handshake.py `
-  --capture "C:\captures\session.pcapng" `
-  --private-key "C:\local-secrets\session-key.pem" `
-  --json artifacts\handshake-plaintext.json
+python tools/locate_session_key.py `
+  --pid PROCESS_ID `
+  --key-out artifacts\session-key.bin `
+  --json artifacts\session-key-locator.json
 
 python tools/decrypt_c2s_rc4.py `
   "C:\captures\session.pcapng" `
-  --handshake-json artifacts\handshake-plaintext.json `
+  --session-key artifacts\session-key.bin `
   --modulus-sha256 MODULUS_SHA256 `
   --frame-limit 0 --samples-per-opcode 3 --quiet `
   --json artifacts\c2s-report.json
 ```
+
+The revision-3527 fast path was measured across ten repeated runs at 164-230 ms
+internally and 253-324 ms including Python startup. It derives the vtable from
+runtime code, finds the profiled `network_owner`, and requires two valid RC4
+permutations carrying the same 214-byte key. A standalone client already owns
+its generated key and skips runtime recovery entirely. RSA/BIGNUM recovery
+remains available in the repository for an older capture whose live session
+state is no longer available.
 
 Every file below `artifacts/`, except its README, is ignored by Git. Handshake
 reports and plaintext samples may contain session values.

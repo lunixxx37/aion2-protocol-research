@@ -16,6 +16,10 @@ python tools/probe_tick_plaintext.py "C:\path\to\session.pcapng" `
 python tools/locate_openssl_rsa.py --pid PROCESS_ID `
   --json artifacts\openssl-rsa-locator.json
 
+python tools/locate_session_key.py --pid PROCESS_ID `
+  --key-out artifacts\session-key.bin `
+  --json artifacts\session-key-locator.json
+
 python tools/find_x64_calls.py --pid PROCESS_ID `
   --target 0xRUNTIME_ADDRESS `
   --json artifacts\rsa-private-decrypt-xrefs.json
@@ -33,7 +37,7 @@ python tools/decrypt_handshake.py `
 
 python tools/decrypt_c2s_rc4.py `
   "C:\path\to\session.pcapng" `
-  --handshake-json artifacts\handshake-plaintext.json `
+  --session-key artifacts\session-key.bin `
   --modulus-sha256 MODULUS_SHA256 `
   --frame-limit 0 --samples-per-opcode 3 --quiet `
   --json artifacts\c2s-rc4-decrypt.json

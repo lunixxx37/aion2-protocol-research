@@ -127,7 +127,42 @@ The decryptor reassembles TCP, deduplicates retransmissions, locates the matchin
 clear client handshake, and advances one RC4 instance over all subsequent body
 bytes.
 
-## Original-client RSA recovery
+## Fast original-client session-key recovery
+
+For a live revision-3527 client, recover the active 214-byte RC4 key directly
+from the two validated runtime state objects:
+
+```powershell
+$aionPid = (Get-NetTCPConnection -RemotePort 13328 -State Established |
+  Select-Object -First 1).OwningProcess
+
+python tools/locate_session_key.py `
+  --pid $aionPid `
+  --key-out artifacts\session-key.bin `
+  --json artifacts\session-key-locator.json
+```
+
+The JSON report contains key hashes and structural validation, not the key
+bytes. `--key-out` is optional and writes the raw key only to the specified
+ignored local path. Feed that file directly to the C2S decryptor:
+
+```powershell
+python tools/decrypt_c2s_rc4.py `
+  "C:\path\to\session.pcapng" `
+  --session-key artifacts\session-key.bin `
+  --modulus-sha256 MODULUS_SHA256 `
+  --frame-limit 0 --samples-per-opcode 0 --quiet `
+  --json artifacts\c2s-rc4-decrypt.json
+```
+
+The locator derives the RC4 vtable from runtime code, searches the profiled
+network-owner arena, and accepts only two states with valid 256-byte RC4
+permutations and the same key. Ten repeated local tests completed the internal
+lookup in 164-230 ms (197 ms average), or 253-324 ms including Python process
+startup. The profile is revision-specific; `--full-scan-fallback` explicitly
+enables the older slow search if a later client build moves the owner object.
+
+## Original-client RSA recovery fallback
 
 The Windows runtime tools use `VirtualQueryEx` and `ReadProcessMemory`; the
 active workflow does not modify or pause the target process. Depending on the
@@ -141,7 +176,8 @@ python tools/locate_openssl_rsa.py `
   --json artifacts\openssl-rsa-locator.json
 ```
 
-Search for the capture's current RSA object:
+Search for the capture's current RSA object when the fast live-state path is
+not applicable:
 
 ```powershell
 python tools/scan_process_rsa.py `

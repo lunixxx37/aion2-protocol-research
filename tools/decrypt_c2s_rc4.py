@@ -34,6 +34,15 @@ def load_secret(path: Path) -> bytes:
     return secret
 
 
+def load_raw_secret(path: Path) -> bytes:
+    secret = path.read_bytes()
+    if len(secret) != 214:
+        raise SystemExit(
+            f"expected a 214-byte raw session key, got {len(secret)} bytes"
+        )
+    return secret
+
+
 def reassemble(segments: list[tuple[int, bytes, float]]) -> list[tuple[int, bytes]]:
     """Reassemble non-wrapping TCP segments and split only at real gaps."""
     chunks: list[tuple[int, bytearray]] = []
@@ -127,7 +136,13 @@ def render_sequence_counts(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("capture", type=Path)
-    parser.add_argument("--handshake-json", required=True, type=Path)
+    key_source = parser.add_mutually_exclusive_group(required=True)
+    key_source.add_argument("--handshake-json", type=Path)
+    key_source.add_argument(
+        "--session-key",
+        type=Path,
+        help="raw 214-byte key exported by locate_session_key.py",
+    )
     parser.add_argument("--modulus-sha256", required=True)
     parser.add_argument("--port", type=int, default=13328)
     parser.add_argument("--frame-limit", type=int, default=200)
@@ -169,7 +184,12 @@ def main() -> int:
     except ImportError as error:
         raise SystemExit("install dependency: python -m pip install scapy") from error
 
-    secret = load_secret(args.handshake_json.resolve())
+    if args.session_key is not None:
+        secret = load_raw_secret(args.session_key.resolve())
+        secret_source = "raw 214-byte runtime session key"
+    else:
+        secret = load_secret(args.handshake_json.resolve())
+        secret_source = "complete 214-byte big-endian OAEP-SHA1 plaintext"
     modulus_hash = args.modulus_sha256.lower()
     flows: dict[tuple, list[tuple[int, bytes, float]]] = collections.defaultdict(list)
     seen_segments: set[tuple] = set()
@@ -329,7 +349,7 @@ def main() -> int:
         "schema": "aion2-c2s-rc4-decrypt/v1",
         "capture": args.capture.name,
         "modulus_sha256": modulus_hash,
-        "key_source": "complete 214-byte big-endian OAEP-SHA1 plaintext",
+        "key_source": secret_source,
         "cipher": "RC4; one continuous state; clear outer uvarint; encrypted body only",
         "sample_opcodes": sorted(sample_filter),
         "matching_flows": len(selected),
