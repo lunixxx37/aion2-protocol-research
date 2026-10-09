@@ -327,7 +327,7 @@ The 256-byte block decrypts as RSA-OAEP-SHA1 and yields the complete 214-byte RC
 
 ### `13 36` — `CLIENT_SESSION_SETUP`
 
-First encrypted body in all four decoded sessions. The byte layout and Base64 token grammar are locally confirmed; identifier semantics and their launcher/login sources remain open. Raw values are excluded.
+First encrypted body in all four decoded sessions. The byte layout and Base64 token grammar are locally confirmed. The encoded token is copied from the NC Platform SDK authn_token response field, with -authnToken: supported as an alternate input; the identifier meanings and other value sources remain open. Raw values are excluded.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|

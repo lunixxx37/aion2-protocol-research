@@ -333,9 +333,46 @@ Revision-3527 runtime disassembly locates the client builder at module offset
 `AION2.exe+0x9001BA0`. It copies the already formatted primary string from a
 global client-state object and the 100-character Base64 string from a session
 object at field offset `0x15C0`; it does not create either identifier while
-sending. A handler at `AION2.exe+0x9509C50` populates the latter field by
-copying a string at offset `0x58` from an incoming response object. The exact
-upstream transport and response type remain to be named.
+sending.
+
+The source chain for the `+0x15C0` string is now confirmed. A response handler
+at `AION2.exe+0x9509C50` asks an incoming NC Platform SDK result for an extended
+response view. Its virtual populate method at `AION2.exe+0x7AE8970` looks up
+the structured field named `authn_token`, verifies that it is a string, and
+stores it at response offset `+0x58`. The handler then copies that string to
+session offset `+0x15C0`. Nearby SDK strings associate the path with
+`GetTicketLoginResult` and third-party authentication polling; the exact C++
+response class and transport endpoint remain unnamed.
+
+There is also an initialization fallback at `AION2.exe+0x94F7A50`. It parses
+the internal Unreal command line for `-authnToken:` and assigns a supplied
+value to the same session field. The same routine separately recognizes
+`-pushToken:`. The inspected Steam launch contained neither switch after
+startup, while the live session field still contained the expected
+100-character Base64 value. The response handler is therefore the confirmed
+non-command-line population path, while the command-line parser remains an
+alternate supported input. A launch-time trace would be needed to distinguish
+which path supplied any particular session.
+
+The encrypted `-lp` launcher switch is a separate configuration container, not
+the authentication-token payload. Revision 3527 implements:
+
+```text
+Base64 decode
+-> require a non-zero multiple of 16 bytes
+-> AES-256-ECB decrypt with ASCII key "LaunchParameterMakingKeyforAion2"
+-> strict PKCS#7 unpadding
+-> UTF-8 text
+```
+
+The AES implementation has no IV argument or cross-block feedback and writes
+each decrypted block directly in place. The inspected 192-character `-lp`
+sample decoded to 144 ciphertext bytes and 140 plaintext bytes. Its plaintext
+began with the same key text as a marker, followed by four configuration
+fields: `GamePlatformType`, `NcUpdaterConfigType`, `NCCRAppIDKey`, and
+`ServerListType`. It contained no `authn_token` value. Raw field values are
+excluded from this report. `tools/decode_launcher_parameter.py` reproduces the
+decode and reports names and lengths with values redacted by default.
 
 The builder stores one caller-provided boolean and one `optional_value > 0`
 boolean; the packet serializer packs them into bits 0 and 1 of `setup_flags`.
@@ -355,9 +392,11 @@ Raw captured identifiers and values are deliberately excluded from the
 repository.
 
 `tools/aion2_client_crypto.py` now parses and serializes this exact grammar.
-That completes the packet's byte codec, but a standalone client must still
-obtain fresh, accepted field values from the authenticated launcher/login and
-lobby handoff.
+That completes the packet's byte codec and identifies the `authn_token` handoff,
+but a standalone client must still perform the preceding authenticated NC
+Platform login and lobby flow to obtain fresh, accepted values. The live
+sources and meanings of `primary_identifier`, `optional_value`, and the two
+UUID components remain open.
 
 ### 5.2 Opcode observations
 
@@ -643,6 +682,8 @@ process-memory inspection. It neither injects code nor pauses the process.
   references.
 - `disassemble_process.py` reads and decodes bounded runtime code windows.
 - `scan_live_buffers.py` correlates captured bytes with memory candidates.
+- `decode_launcher_parameter.py` decodes the AES-256-ECB `-lp` configuration
+  container and redacts values unless explicitly requested.
 
 The target network process was not a Windows Protected Process or PPL in the
 investigated build. Access still depended on the analysis process token; an
@@ -776,3 +817,8 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
   arena and paired RC4 states, reducing lookup from minutes to about 0.2 seconds
   internally on the investigated revision.
 - Identified and verified the inner zlib container carried by C2S `40 8D`.
+- Reconstructed the complete `13 36` byte layout and traced its encoded token
+  from the NC Platform SDK `authn_token` response field through the session
+  object into the packet builder.
+- Reconstructed the independent `-lp` launcher container as Base64-wrapped
+  AES-256-ECB with strict PKCS#7 padding and added a redacting decoder.

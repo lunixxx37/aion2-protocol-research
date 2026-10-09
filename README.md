@@ -25,7 +25,7 @@ or the operators of Aion 2.
 | RSA padding and handshake plaintext | OAEP-SHA1, exactly 214 bytes |
 | symmetric C2S encryption | **standard RC4, fully reconstructed** |
 | offline C2S PCAP decryption | reproduced across independent sessions |
-| first encrypted `13 36` packet | byte layout and codec reconstructed; value sources open |
+| first encrypted `13 36` packet | byte layout and codec reconstructed; `authn_token` handoff traced |
 | C2S opcode semantics | visible; most payload meanings still being mapped |
 
 The client generates an ephemeral 2048-bit RSA key with public exponent `3`
@@ -64,7 +64,7 @@ python tools/aion2_client_crypto.py --self-test
 
 The self-test covers a published RC4 vector, RSA-2048/e=3, PKCS#1 public-key
 DER, OAEP-SHA1, the `10 36`/`11 36` layouts, the `13 36` session-setup codec,
-and continuous multi-frame RC4.
+the AES-256-ECB launcher-parameter decoder, and continuous multi-frame RC4.
 
 ## Standalone-client primitives
 
@@ -76,6 +76,7 @@ connection-specific cryptographic layer:
 - `11 36` server-handshake parsing;
 - OAEP-SHA1 recovery of the 214-byte session secret;
 - `13 36` session-setup parsing and serialization;
+- Base64/AES-256-ECB decoding of the separate `-lp` launcher configuration;
 - continuous body-only RC4 framing for outgoing C2S packets;
 - strict unsigned-varint framing helpers.
 
@@ -87,10 +88,22 @@ A standalone client owns its generated private key, so it does not need the
 process-memory recovery tools. Those tools exist to analyze captures produced
 by the original client.
 
-The remaining major layers for a complete client are launcher/login session
-handoff, lobby state and redirect handling, determining the authenticated
-source of the structured `13 36` values, and semantic codecs for gameplay
-packets.
+The `13 36` encoded token is supplied by the NC Platform SDK field
+`authn_token`, with an additional `-authnToken:` command-line input supported
+by the client. The remaining major layers for a complete client are performing
+that authenticated login exchange, reproducing lobby state and redirects,
+locating the remaining structured `13 36` values, and completing semantic
+codecs for gameplay packets.
+
+To inspect a captured `-lp` value without printing its field values:
+
+```powershell
+Get-Content artifacts\launcher-parameter.txt |
+  python tools/decode_launcher_parameter.py
+```
+
+The input file remains local under the ignored `artifacts/` directory. Add
+`--show-values` only when plaintext values are needed for a local comparison.
 
 ## Offline capture workflow
 

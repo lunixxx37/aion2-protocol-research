@@ -61,7 +61,13 @@ def read_memory(pid: int, address: int, size: int) -> bytes:
         kernel32.CloseHandle(handle)
 
 
-def decode_window(data: bytes, base: int, focus: int) -> list[dict]:
+def decode_window(
+    data: bytes,
+    base: int,
+    focus: int,
+    display_before: int = 96,
+    display_after: int = 128,
+) -> list[dict]:
     decoder = Cs(CS_ARCH_X86, CS_MODE_64)
     best = []
     best_score = (-1, -1)
@@ -89,7 +95,7 @@ def decode_window(data: bytes, base: int, focus: int) -> list[dict]:
             "focus": instruction.address == focus,
         }
         for instruction in best
-        if focus - 96 <= instruction.address <= focus + 128
+        if focus - display_before <= instruction.address <= focus + display_after
     ]
 
 
@@ -99,8 +105,22 @@ def main() -> int:
     parser.add_argument("--address", required=True, action="append", type=parse_address)
     parser.add_argument("--before", type=int, default=160)
     parser.add_argument("--after", type=int, default=192)
+    parser.add_argument(
+        "--display-before",
+        type=int,
+        default=96,
+        help="bytes before each focus address to include in the report",
+    )
+    parser.add_argument(
+        "--display-after",
+        type=int,
+        default=128,
+        help="bytes after each focus address to include in the report",
+    )
     parser.add_argument("--json", dest="json_path", type=Path)
     args = parser.parse_args()
+    if min(args.before, args.after, args.display_before, args.display_after) < 0:
+        parser.error("window sizes must be non-negative")
 
     windows = []
     for focus in args.address:
@@ -111,7 +131,13 @@ def main() -> int:
                 "focus": f"0x{focus:016X}",
                 "read_base": f"0x{base:016X}",
                 "bytes_read": len(data),
-                "instructions": decode_window(data, base, focus),
+                "instructions": decode_window(
+                    data,
+                    base,
+                    focus,
+                    args.display_before,
+                    args.display_after,
+                ),
             }
         )
     report = {"schema": "aion2-process-disassembly/v1", "pid": args.pid, "windows": windows}

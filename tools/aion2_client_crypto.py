@@ -18,6 +18,7 @@ CLIENT_HANDSHAKE_OPCODE = b"\x10\x36"
 SERVER_HANDSHAKE_OPCODE = b"\x11\x36"
 CLIENT_SESSION_SETUP_OPCODE = b"\x13\x36"
 EXPECTED_SECRET_LENGTH = 214
+LAUNCH_PARAMETER_AES_KEY = b"LaunchParameterMakingKeyforAion2"
 
 
 def encode_uvarint(value: int) -> bytes:
@@ -137,6 +138,41 @@ class ClientSessionSetup:
     def has_optional_value(self) -> bool:
         """Return the builder's ``optional_value > 0`` flag."""
         return bool(self.setup_flags & 0x02)
+
+
+def decrypt_launcher_parameter(encoded: str) -> str:
+    """Decode the encrypted value carried by the ``-lp`` launcher switch.
+
+    The client Base64-decodes the value, decrypts it in place with AES-256-ECB,
+    validates PKCS#7 padding, and interprets the result as UTF-8.
+    """
+    try:
+        encoded_bytes = encoded.encode("ascii")
+        ciphertext = base64.b64decode(encoded_bytes, validate=True)
+    except (UnicodeEncodeError, binascii.Error) as error:
+        raise ValueError("launcher parameter is not valid Base64") from error
+    if not ciphertext or len(ciphertext) % 16:
+        raise ValueError("launcher ciphertext length must be a non-zero multiple of 16")
+
+    try:
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    except ImportError as error:
+        raise RuntimeError("install dependency: python -m pip install cryptography") from error
+
+    decryptor = Cipher(
+        algorithms.AES(LAUNCH_PARAMETER_AES_KEY),
+        modes.ECB(),
+    ).decryptor()
+    padded = decryptor.update(ciphertext) + decryptor.finalize()
+    padding_length = padded[-1]
+    if not 1 <= padding_length <= 16 or not padded.endswith(
+        bytes((padding_length,)) * padding_length
+    ):
+        raise ValueError("launcher parameter has invalid PKCS#7 padding")
+    try:
+        return padded[:-padding_length].decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise ValueError("launcher plaintext is not UTF-8") from error
 
 
 def _ascii_bytes(value: str, field: str) -> bytes:
@@ -329,6 +365,24 @@ def decrypt_server_secret(private_key, handshake: ServerHandshake) -> bytes:
 def self_test() -> None:
     # Published RC4 test vector: Key / Plaintext -> BBF316E8D940AF0AD3.
     assert RC4(b"Key").crypt(b"Plaintext").hex() == "bbf316e8d940af0ad3"
+
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+    launch_plaintext = (
+        "LaunchParameterMakingKeyforAion2&GamePlatformType=TEST"
+        "&ServerListType:2"
+    ).encode("utf-8")
+    padding_length = 16 - len(launch_plaintext) % 16
+    encryptor = Cipher(
+        algorithms.AES(LAUNCH_PARAMETER_AES_KEY),
+        modes.ECB(),
+    ).encryptor()
+    launch_ciphertext = encryptor.update(
+        launch_plaintext + bytes((padding_length,)) * padding_length
+    ) + encryptor.finalize()
+    assert decrypt_launcher_parameter(base64.b64encode(launch_ciphertext).decode("ascii")) == (
+        launch_plaintext.decode("utf-8")
+    )
 
     setup = ClientSessionSetup(
         primary_identifier="123456:11111111-1111-1111-1111-111111111111",

@@ -41,7 +41,14 @@ def read_qword(kernel32, handle, address: int) -> int | None:
     return int.from_bytes(buffer.raw, "little")
 
 
-def scan(pid: int, targets: set[int], chunk_size: int, max_region: int) -> tuple[list[dict], dict]:
+def scan(
+    pid: int,
+    targets: set[int],
+    chunk_size: int,
+    max_region: int,
+    start: int = 0,
+    end: int = 1 << 47,
+) -> tuple[list[dict], dict]:
     if os.name != "nt":
         raise SystemExit("this scanner is Windows-only")
 
@@ -77,11 +84,10 @@ def scan(pid: int, targets: set[int], chunk_size: int, max_region: int) -> tuple
         "bytes_read": 0,
         "read_failures": 0,
     }
-    address = 0
-    maximum_address = (1 << 47) - 1
+    address = start
     overlap = 16
     try:
-        while address < maximum_address:
+        while address < end:
             mbi = MEMORY_BASIC_INFORMATION()
             queried = kernel32.VirtualQueryEx(
                 handle,
@@ -104,18 +110,24 @@ def scan(pid: int, targets: set[int], chunk_size: int, max_region: int) -> tuple
             ):
                 continue
 
+            read_start = max(base, start)
+            read_end = min(next_address, end)
+            read_size = read_end - read_start
+            if read_size <= 0:
+                continue
+
             stats["regions_considered"] += 1
             offset = 0
             tail = b""
             region_read = False
             seen: set[tuple[str, int]] = set()
-            while offset < size:
-                request = min(chunk_size, size - offset)
+            while offset < read_size:
+                request = min(chunk_size, read_size - offset)
                 buffer = ctypes.create_string_buffer(request)
                 received = ctypes.c_size_t()
                 ok = kernel32.ReadProcessMemory(
                     handle,
-                    ctypes.c_void_p(base + offset),
+                    ctypes.c_void_p(read_start + offset),
                     buffer,
                     request,
                     ctypes.byref(received),
@@ -125,7 +137,7 @@ def scan(pid: int, targets: set[int], chunk_size: int, max_region: int) -> tuple
                     break
                 region_read = True
                 block = tail + buffer.raw[: received.value]
-                block_base = base + offset - len(tail)
+                block_base = read_start + offset - len(tail)
 
                 cursor = 0
                 while True:
@@ -192,14 +204,39 @@ def main() -> int:
     parser.add_argument("--json", dest="json_path", type=Path)
     parser.add_argument("--chunk-size", type=int, default=4 << 20)
     parser.add_argument("--max-region", type=int, default=512 << 20)
+    parser.add_argument(
+        "--start",
+        type=parse_address,
+        default=0,
+        help="inclusive virtual-address lower bound (default: 0)",
+    )
+    parser.add_argument(
+        "--end",
+        type=parse_address,
+        default=1 << 47,
+        help="exclusive virtual-address upper bound (default: 0x800000000000)",
+    )
     args = parser.parse_args()
+    if args.start < 0 or args.end <= args.start:
+        parser.error("--end must be greater than a non-negative --start")
 
     targets = set(args.target)
-    hits, stats = scan(args.pid, targets, args.chunk_size, args.max_region)
+    hits, stats = scan(
+        args.pid,
+        targets,
+        args.chunk_size,
+        args.max_region,
+        args.start,
+        args.end,
+    )
     report = {
         "schema": "aion2-x64-call-reference-scan/v1",
         "pid": args.pid,
         "targets": [f"0x{value:016X}" for value in sorted(targets)],
+        "range": {
+            "start": f"0x{args.start:016X}",
+            "end": f"0x{args.end:016X}",
+        },
         "stats": stats,
         "hits": hits,
     }
