@@ -226,8 +226,8 @@ The latest reproducible snapshot is:
 | Session | Frames | RC4 body bytes | confirmed `01 36` time packets |
 |---|---:|---:|---:|
 | revision 3527, flow A | 22,112 | 345,763 | 15,033 |
-| revision 3527, flow B after restart | 72,076 | 781,355 | 68,554 |
-| **total** | **94,188** | **1,127,118** | **83,587** |
+| revision 3527, flow B after restart | 133,281 | 1,397,381 | 129,274 |
+| **total** | **155,393** | **1,743,144** | **144,307** |
 
 Both streams remained aligned to the last complete captured frame without
 manual resynchronization. The sessions used different RSA moduli and OAEP
@@ -310,7 +310,69 @@ Several useful structural observations are already reproducible:
 - `40 8D` contains a length-delimited zlib stream. Its declared decompressed
   lengths exactly match zlib output, which begins with UTF-16LE JSON-like text.
 
-### 5.3 Offline command
+### 5.3 Timestamped movement and skill-request layouts
+
+The decryptor can associate retained plaintext frames with the capture time of
+their containing TCP segment. A focused replay retained every relevant family
+`37`/`38` sample from flow B. Across 2,035 timestamp-bearing samples, every
+trailing `u64le` was a plausible Unix-millisecond value with a stable local
+clock offset from the packet-capture timestamp.
+
+The high-volume movement forms share this layout:
+
+```text
+00 37 or 01 37
+flags:u8                    # 02 in retained samples
+position:f32le[3]
+packed_movement_state[7]   # bit-level layout still open
+client_unix_ms:u64le
+```
+
+`01 37` is the high-frequency form, commonly emitted at approximately 10 Hz
+while the character moves. `00 37` has the same shape but appears less often
+and commonly follows a movement-skill sequence. The precise distinction still
+needs a controlled start/stop/rotate capture.
+
+`18 37` is an action-position snapshot:
+
+```text
+18 37 || flags:u16le || position:f32le[3] || heading:f32le
+      || client_unix_ms:u64le
+```
+
+It frequently appears immediately before `00 38`. The `00 38` body contains a
+`u32le` at offset 4. All 16 distinct values across 323 retained packets match
+published skill IDs, including Dodge, Flame Arrow, Firestorm, Blaze, and
+Pyroclasm. This establishes the following partial request header:
+
+```text
+00 38
+request_flags:u8
+request_stage:u8            # 01 in retained samples
+skill_id:u32le
+entity_id_tag:u8            # 02 in retained samples
+target_entity_id:uvarint
+targeting_and_aim_fields[variable]
+client_unix_ms:u64le
+```
+
+Dodge provides a second independently structured sequence. All retained
+`0E 37` packets use skill `15000100` or variant `15000101`; the public skill
+catalog names `15000100` as Dodge. A request is normally followed by two
+`0F 37` movement samples:
+
+```text
+0E 37 -> 0F 37 -> 0F 37 -> 00 37
+```
+
+Both packets expose finite position, normalized direction, heading, and client
+timestamp fields. `0E 37` additionally carries the skill ID and target entity.
+The exact layouts and confidence labels are maintained in `opcodes.json`.
+
+Raw character positions, entity identifiers, and timestamps remain in ignored
+local artifacts.
+
+### 5.4 Offline command
 
 ```powershell
 python tools/decrypt_c2s_rc4.py `
@@ -319,6 +381,20 @@ python tools/decrypt_c2s_rc4.py `
   --modulus-sha256 MODULUS_SHA256 `
   --frame-limit 0 --samples-per-opcode 3 --quiet `
   --json artifacts\c2s-rc4-decrypt.json
+```
+
+For focused timestamped samples, repeat `--sample-opcode` and raise the sample
+limit without retaining every decrypted frame:
+
+```powershell
+python tools/decrypt_c2s_rc4.py `
+  "C:\path\to\session.pcapng" `
+  --handshake-json artifacts\handshake-plaintext.json `
+  --modulus-sha256 MODULUS_SHA256 `
+  --frame-limit 0 --samples-per-opcode 5000 `
+  --sample-opcode 0037 --sample-opcode 0137 --sample-opcode 1837 `
+  --sample-opcode 0038 --sample-opcode 0e37 --sample-opcode 0f37 `
+  --quiet --json artifacts\c2s-focused-samples.json
 ```
 
 The handshake report must contain exactly one big-endian OAEP-SHA1 candidate
@@ -433,8 +509,11 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
 - Implemented `decrypt_c2s_rc4.py` with TCP reassembly, modulus-based flow
   selection, continuous body-only RC4, opcode statistics, and per-opcode
   samples.
-- Fully decoded two independently keyed sessions, totaling 94,188 frames and
-  1,127,118 encrypted body bytes in the latest snapshot.
+- Fully decoded two independently keyed sessions, totaling 155,393 frames and
+  1,743,144 encrypted body bytes in the latest snapshot.
+- Added capture timestamps and opcode filters to focused C2S sampling, then
+  mapped movement coordinates, client timestamps, skill IDs, and the repeated
+  Dodge request/movement sequence in families `37` and `38`.
 - Implemented `aion2_client_crypto.py` with standalone RSA handshake generation,
   OAEP recovery, continuous C2S framing, and deterministic self-tests.
 - Identified and verified the inner zlib container carried by C2S `40 8D`.

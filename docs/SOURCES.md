@@ -17,7 +17,7 @@ have the highest priority:
 - fully validated ephemeral RSA private keys for independent sessions;
 - matching server blocks decoded as OAEP-SHA1 with 214-byte messages;
 - runtime RC4 KSA/PRGA disassembly and exact 214-byte key-buffer matches;
-- continuous offline C2S decryption across more than 90,000 frames in two
+- continuous offline C2S decryption across more than 155,000 frames in two
   independently keyed sessions.
 
 Raw captures are excluded because they contain identity and session data.
@@ -57,6 +57,8 @@ Its dispatcher intentionally handles server-to-client traffic only.
 - License: GPL
 - Protocol report:
   <https://github.com/Helveticxa/Aether-Aion2-DPS-meter-Global/blob/main/docs/AION2_PACKET_PROTOCOL_ANALYSIS.zh-CN.md>
+- English skill-ID catalog:
+  <https://github.com/Helveticxa/Aether-Aion2-DPS-meter-Global/blob/main/src/i18n/locales/aion2skills/en.json>
 - Use: additional layouts for spawn, damage, HP, and owner fields
 - Limitation: older than the currently investigated Global client revision
 

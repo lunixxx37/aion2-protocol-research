@@ -111,7 +111,8 @@ A complete client still needs:
 1. Launcher/login session handling and transfer of required values to lobby.
 2. Lobby parsing, including the `0F 39` world redirect.
 3. Required fields of the first encrypted `13 36` session packet.
-4. Semantic codecs for movement, target selection, skills, and inventory.
+4. Complete semantic codecs beyond the partial movement and skill-request
+   layouts now recorded for C2S families `37` and `38`.
 5. Buffered S2C processing, including nested LZ4 bundles.
 
 Record new opcode mappings with a confidence level in

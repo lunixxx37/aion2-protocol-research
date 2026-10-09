@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import bisect
 import collections
 import hashlib
 import json
@@ -33,10 +34,10 @@ def load_secret(path: Path) -> bytes:
     return secret
 
 
-def reassemble(segments: list[tuple[int, bytes]]) -> list[tuple[int, bytes]]:
+def reassemble(segments: list[tuple[int, bytes, float]]) -> list[tuple[int, bytes]]:
     """Reassemble non-wrapping TCP segments and split only at real gaps."""
     chunks: list[tuple[int, bytearray]] = []
-    for sequence, payload in sorted(segments, key=lambda item: item[0]):
+    for sequence, payload, _timestamp in sorted(segments, key=lambda item: item[0]):
         if not payload:
             continue
         if not chunks:
@@ -52,6 +53,24 @@ def reassemble(segments: list[tuple[int, bytes]]) -> list[tuple[int, bytes]]:
         overlap = max(0, end - sequence)
         data.extend(payload[overlap:])
     return [(start, bytes(data)) for start, data in chunks]
+
+
+def timestamp_for_sequence(
+    segments: list[tuple[int, bytes, float]],
+    starts: list[int],
+    sequence: int,
+) -> float | None:
+    """Return a capture timestamp for sequence in O(log n) typical time."""
+    index = bisect.bisect_right(starts, sequence) - 1
+    while index > 0 and starts[index] == starts[index - 1]:
+        index -= 1
+    for candidate in range(index, min(len(segments), index + 8)):
+        start, payload, timestamp = segments[candidate]
+        if start > sequence:
+            break
+        if sequence < start + len(payload):
+            return timestamp
+    return None
 
 
 def iter_frames_with_offsets(data: bytes, offset: int):
@@ -104,9 +123,24 @@ def main() -> int:
         default=0,
         help="retain up to N plaintext examples for every opcode",
     )
+    parser.add_argument(
+        "--sample-opcode",
+        action="append",
+        default=[],
+        metavar="HEX",
+        help="retain samples only for this two-byte wire opcode; repeat as needed",
+    )
     parser.add_argument("--json", dest="json_path", type=Path)
     parser.add_argument("--quiet", action="store_true", help="write JSON without printing it")
     args = parser.parse_args()
+    sample_filter = {value.replace(" ", "").lower() for value in args.sample_opcode}
+    invalid_filters = sorted(
+        value
+        for value in sample_filter
+        if len(value) != 4 or any(character not in "0123456789abcdef" for character in value)
+    )
+    if invalid_filters:
+        raise SystemExit(f"invalid --sample-opcode value: {invalid_filters[0]}")
 
     try:
         from scapy.all import IP, IPv6, TCP, PcapReader
@@ -115,7 +149,7 @@ def main() -> int:
 
     secret = load_secret(args.handshake_json.resolve())
     modulus_hash = args.modulus_sha256.lower()
-    flows: dict[tuple, list[tuple[int, bytes]]] = collections.defaultdict(list)
+    flows: dict[tuple, list[tuple[int, bytes, float]]] = collections.defaultdict(list)
     seen_segments: set[tuple] = set()
     read_error = None
     try:
@@ -148,7 +182,7 @@ def main() -> int:
                     continue
                 seen_segments.add(identity)
                 key = (source, int(tcp.sport), destination, int(tcp.dport))
-                flows[key].append((int(tcp.seq), payload))
+                flows[key].append((int(tcp.seq), payload, float(packet.time)))
     except Exception as error:  # Active pcapng files can end in a partial block.
         read_error = str(error)
 
@@ -168,6 +202,8 @@ def main() -> int:
                 continue
 
             cipher = RC4(secret)
+            timestamp_segments = sorted(segments, key=lambda item: (item[0], item[2]))
+            timestamp_starts = [item[0] for item in timestamp_segments]
             frames = []
             opcode_samples: dict[str, list[dict]] = collections.defaultdict(list)
             opcode_counts: collections.Counter[str] = collections.Counter()
@@ -183,11 +219,17 @@ def main() -> int:
                 body_length_counts[len(plaintext)] += 1
                 ping_count += classification["kind"] == "client-time-ping"
                 opcode = classification["opcode_hex"]
-                if len(opcode_samples[opcode]) < args.samples_per_opcode:
+                absolute_sequence = base_sequence + offset
+                capture_epoch = timestamp_for_sequence(
+                    timestamp_segments, timestamp_starts, absolute_sequence
+                )
+                retain_opcode = not sample_filter or opcode in sample_filter
+                if retain_opcode and len(opcode_samples[opcode]) < args.samples_per_opcode:
                     opcode_samples[opcode].append(
                         {
                             "index": index,
-                            "tcp_sequence": base_sequence + offset,
+                            "tcp_sequence": absolute_sequence,
+                            "capture_epoch": capture_epoch,
                             "body_length": len(plaintext),
                             "rc4_stream_offset": stream_offset,
                             "plaintext_hex": plaintext.hex(),
@@ -197,7 +239,8 @@ def main() -> int:
                     frames.append(
                         {
                             "index": index,
-                            "tcp_sequence": base_sequence + offset,
+                            "tcp_sequence": absolute_sequence,
+                            "capture_epoch": capture_epoch,
                             "prefix_width": width,
                             "body_length": len(ciphertext),
                             "rc4_stream_offset": stream_offset,
@@ -234,6 +277,7 @@ def main() -> int:
         "modulus_sha256": modulus_hash,
         "key_source": "complete 214-byte big-endian OAEP-SHA1 plaintext",
         "cipher": "RC4; one continuous state; clear outer uvarint; encrypted body only",
+        "sample_opcodes": sorted(sample_filter),
         "matching_flows": len(selected),
         "flows": selected,
         "read_error": read_error,
