@@ -110,6 +110,20 @@ def classify_plaintext(body: bytes) -> dict:
     return result
 
 
+def render_sequence_counts(
+    counts: collections.Counter[tuple[str, ...]],
+    limit: int,
+) -> list[dict]:
+    """Render opcode-only sequence aggregates in stable frequency order."""
+    ordered = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    if limit:
+        ordered = ordered[:limit]
+    return [
+        {"opcodes": list(opcodes), "frames": frames}
+        for opcodes, frames in ordered
+    ]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("capture", type=Path)
@@ -130,6 +144,12 @@ def main() -> int:
         metavar="HEX",
         help="retain samples only for this two-byte wire opcode; repeat as needed",
     )
+    parser.add_argument(
+        "--sequence-limit",
+        type=int,
+        default=250,
+        help="retain the N most frequent opcode pairs/triples/quadruples; 0 keeps all",
+    )
     parser.add_argument("--json", dest="json_path", type=Path)
     parser.add_argument("--quiet", action="store_true", help="write JSON without printing it")
     args = parser.parse_args()
@@ -141,6 +161,8 @@ def main() -> int:
     )
     if invalid_filters:
         raise SystemExit(f"invalid --sample-opcode value: {invalid_filters[0]}")
+    if args.sequence_limit < 0:
+        raise SystemExit("--sequence-limit must be zero or greater")
 
     try:
         from scapy.all import IP, IPv6, TCP, PcapReader
@@ -208,6 +230,14 @@ def main() -> int:
             opcode_samples: dict[str, list[dict]] = collections.defaultdict(list)
             opcode_counts: collections.Counter[str] = collections.Counter()
             body_length_counts: collections.Counter[int] = collections.Counter()
+            immediate_pairs: collections.Counter[tuple[str, ...]] = collections.Counter()
+            non_time_sequences = {
+                size: collections.Counter() for size in range(2, 5)
+            }
+            previous_opcode: str | None = None
+            recent_non_time_opcodes: collections.deque[str] = collections.deque(
+                maxlen=3
+            )
             ping_count = 0
             for index, (offset, width, ciphertext) in enumerate(
                 iter_frames_with_offsets(stream, encrypted_at)
@@ -219,6 +249,14 @@ def main() -> int:
                 body_length_counts[len(plaintext)] += 1
                 ping_count += classification["kind"] == "client-time-ping"
                 opcode = classification["opcode_hex"]
+                if previous_opcode is not None:
+                    immediate_pairs[(previous_opcode, opcode)] += 1
+                previous_opcode = opcode
+                if classification["kind"] != "client-time-ping":
+                    sequence = (*recent_non_time_opcodes, opcode)
+                    for size in range(2, min(4, len(sequence)) + 1):
+                        non_time_sequences[size][sequence[-size:]] += 1
+                    recent_non_time_opcodes.append(opcode)
                 absolute_sequence = base_sequence + offset
                 capture_epoch = timestamp_for_sequence(
                     timestamp_segments, timestamp_starts, absolute_sequence
@@ -265,6 +303,22 @@ def main() -> int:
                     "opcode_counts": dict(opcode_counts.most_common()),
                     "body_length_counts": {
                         str(length): count for length, count in body_length_counts.most_common()
+                    },
+                    "opcode_sequences": {
+                        "immediate_pairs": render_sequence_counts(
+                            immediate_pairs, args.sequence_limit
+                        ),
+                        "without_client_time_pings": {
+                            "pairs": render_sequence_counts(
+                                non_time_sequences[2], args.sequence_limit
+                            ),
+                            "triples": render_sequence_counts(
+                                non_time_sequences[3], args.sequence_limit
+                            ),
+                            "quadruples": render_sequence_counts(
+                                non_time_sequences[4], args.sequence_limit
+                            ),
+                        },
                     },
                     "opcode_samples": dict(opcode_samples),
                     "frames": frames,

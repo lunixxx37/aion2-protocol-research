@@ -63,3 +63,8 @@ With `--frame-limit N`, the RC4 report stores the first `N` ciphertext and
 plaintext bodies in full. `--samples-per-opcode N` retains additional plaintext
 examples for every opcode. Use zero for both options when only aggregate
 statistics are needed. Keep all such reports local.
+
+The C2S report also includes aggregate opcode pairs, triples, and quadruples.
+The latter omit `01 36` client-time packets so high-frequency keepalives do not
+hide action sequences. Use `--sequence-limit 0` to retain every distinct
+sequence or set a positive per-category limit for smaller reports.

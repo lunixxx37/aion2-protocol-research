@@ -466,6 +466,12 @@ The handshake report must contain exactly one big-endian OAEP-SHA1 candidate
 for the selected session. The C2S report does not repeat the private RSA key or
 OAEP secret, but retained plaintext bodies may still expose session data.
 
+Every report records immediate opcode pairs and the most frequent two-, three-,
+and four-opcode sequences after removing `01 36` client-time packets. These
+payload-free aggregates make recurring action boundaries visible even when
+`--frame-limit 0` and `--samples-per-opcode 0` avoid retaining plaintext. The
+default keeps 250 entries per sequence size; `--sequence-limit 0` keeps all.
+
 ## 6. Dynamic-analysis methods
 
 ### 6.1 Instrumentation outcome
