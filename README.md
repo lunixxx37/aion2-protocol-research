@@ -36,8 +36,8 @@ RC4 key.
 
 RC4 is continuous across every post-handshake C2S frame body. The outer
 unsigned-varint length remains clear and consumes no keystream. This model was
-validated over more than 158,000 frames and 1.7 million encrypted body bytes
-across four independently keyed world sessions.
+validated over more than 161,000 frames and 1.8 million encrypted body bytes
+across five independently keyed world sessions.
 
 ## Documentation
 
@@ -190,8 +190,10 @@ accepts only two states with valid 256-byte RC4 permutations and the same key.
 Ten repeated local tests after an independent restart completed the internal
 lookup in 269-297 ms (280 ms average), or 348-385 ms including Python process
 startup. Subsequent monitor polls took 0.40-0.76 ms (0.55 ms average). The
-profile is revision-specific; `--full-scan-fallback` explicitly enables the
-older slow search if a later client build changes the object layout.
+standalone locator keeps its broader search opt-in through
+`--full-scan-fallback`. The monitor automatically performs that validated
+fallback once if the allocator-specific fast profile misses, then caches the
+two discovered state addresses; use `--no-full-scan-fallback` to disable it.
 
 ## Original-client RSA recovery fallback
 

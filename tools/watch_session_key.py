@@ -23,8 +23,10 @@ try:
         discover_world_pid,
         established_tcp_pids,
         locate_rc4_vtable,
+        locate_states,
         locate_states_via_owner_arena,
         select_key,
+        validate_rc4_state,
     )
 except ImportError:  # Direct execution: python tools/watch_session_key.py
     from locate_session_key import (
@@ -32,8 +34,10 @@ except ImportError:  # Direct execution: python tools/watch_session_key.py
         discover_world_pid,
         established_tcp_pids,
         locate_rc4_vtable,
+        locate_states,
         locate_states_via_owner_arena,
         select_key,
+        validate_rc4_state,
     )
 
 
@@ -59,7 +63,13 @@ def close_context(context: dict | None) -> None:
         context["reader"].close()
 
 
-def initialize_context(pid: int, chunk_size: int) -> dict:
+def initialize_context(
+    pid: int,
+    chunk_size: int,
+    max_region: int,
+    full_scan_fallback: bool,
+    fallback_after_misses: int,
+) -> dict:
     reader = ProcessReader(pid)
     try:
         module = reader.main_module()
@@ -74,11 +84,48 @@ def initialize_context(pid: int, chunk_size: int) -> dict:
         "vtable": vtable,
         "signature_stats": signature_stats,
         "owner": None,
+        "state_addresses": [],
+        "chunk_size": chunk_size,
+        "max_region": max_region,
+        "full_scan_fallback": full_scan_fallback,
+        "fallback_after_misses": fallback_after_misses,
+        "fast_misses": 0,
+        "fallback_attempted": False,
     }
 
 
 def read_session(context: dict) -> tuple[dict, bytes] | None:
     reader = context["reader"]
+
+    if context["state_addresses"]:
+        cached_hits = []
+        cached_keys = {}
+        for address in context["state_addresses"]:
+            validated = validate_rc4_state(reader, address, context["vtable"], None)
+            if validated is None:
+                continue
+            item, key = validated
+            cached_hits.append(item)
+            cached_keys[item["key_sha256"]] = key
+        cached_selected = select_key(cached_hits, cached_keys)
+        if cached_selected is not None:
+            key_hash, key = cached_selected
+            return (
+                {
+                    "network_owner": None,
+                    "session_key_sha256": key_hash,
+                    "state_objects": cached_hits,
+                    "state_lookup": {
+                        "method": "cached_state_addresses",
+                        "objects_read": len(context["state_addresses"]),
+                    },
+                },
+                key,
+            )
+        context["state_addresses"] = []
+        context["fast_misses"] = 0
+        context["fallback_attempted"] = False
+
     hits, keys, stats, owner = locate_states_via_owner_arena(
         reader,
         context["vtable"],
@@ -93,16 +140,55 @@ def read_session(context: dict) -> tuple[dict, bytes] | None:
             None,
         )
     selected = select_key(hits, keys)
-    if selected is None:
+    if selected is not None:
+        key_hash, key = selected
+        context["owner"] = owner
+        context["fast_misses"] = 0
+        return (
+            {
+                "network_owner": f"0x{owner:016X}" if owner is not None else None,
+                "session_key_sha256": key_hash,
+                "state_objects": hits,
+                "state_lookup": stats,
+            },
+            key,
+        )
+
+    context["fast_misses"] += 1
+    if (
+        not context["full_scan_fallback"]
+        or context["fallback_attempted"]
+        or context["fast_misses"] < context["fallback_after_misses"]
+    ):
         return None
-    key_hash, key = selected
-    context["owner"] = owner
+
+    context["fallback_attempted"] = True
+    fallback_hits, fallback_keys, fallback_stats = locate_states(
+        reader,
+        context["vtable"],
+        context["chunk_size"],
+        context["max_region"],
+        None,
+    )
+    fallback_selected = select_key(fallback_hits, fallback_keys)
+    if fallback_selected is None:
+        return None
+    key_hash, key = fallback_selected
+    context["state_addresses"] = [
+        int(item["address"], 16)
+        for item in fallback_hits
+        if item["key_sha256"] == key_hash
+    ]
     return (
         {
-            "network_owner": f"0x{owner:016X}" if owner is not None else None,
+            "network_owner": None,
             "session_key_sha256": key_hash,
-            "state_objects": hits,
-            "state_lookup": stats,
+            "state_objects": fallback_hits,
+            "state_lookup": {
+                "method": "full_private_memory_fallback",
+                "owner_arena": stats,
+                "fallback": fallback_stats,
+            },
         },
         key,
     )
@@ -157,6 +243,22 @@ def main() -> int:
     )
     parser.add_argument("--poll-interval", type=float, default=0.25)
     parser.add_argument("--chunk-size", type=int, default=8 << 20)
+    parser.add_argument("--max-region", type=int, default=512 << 20)
+    parser.add_argument(
+        "--full-scan-fallback",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "perform one validated full-memory lookup when the fast owner-arena "
+            "profile misses (default: enabled)"
+        ),
+    )
+    parser.add_argument(
+        "--fallback-after-misses",
+        type=int,
+        default=4,
+        help="number of fast misses before the one-time fallback (default: 4)",
+    )
     parser.add_argument(
         "--max-polls",
         type=int,
@@ -173,6 +275,8 @@ def main() -> int:
     args = parser.parse_args()
     if args.poll_interval < 0:
         raise SystemExit("--poll-interval must be zero or greater")
+    if args.fallback_after_misses < 1:
+        raise SystemExit("--fallback-after-misses must be at least one")
     if args.max_polls < 0 or args.max_events < 0:
         raise SystemExit("--max-polls and --max-events must be zero or greater")
 
@@ -197,7 +301,13 @@ def main() -> int:
                     pid, _discovery = discover_world_pid(
                         args.port, args.process_name
                     )
-                    context = initialize_context(pid, args.chunk_size)
+                    context = initialize_context(
+                        pid,
+                        args.chunk_size,
+                        args.max_region,
+                        args.full_scan_fallback,
+                        args.fallback_after_misses,
+                    )
                 except SystemExit:
                     context = None
 

@@ -229,9 +229,10 @@ The latest reproducible snapshot is:
 | revision 3527, flow B after restart | 133,281 | 1,397,381 | 129,274 |
 | revision 3527, controlled actions | 2,242 | 28,520 | 1,950 |
 | revision 3527, isolated jump | 735 | 9,011 | 694 |
-| **total** | **158,370** | **1,780,675** | **146,951** |
+| revision 3527, controlled actions II | 3,309 | 38,100 | 3,076 |
+| **total** | **161,679** | **1,818,775** | **150,027** |
 
-All four streams remained aligned to the last complete captured frame without
+All five streams remained aligned to the last complete captured frame without
 manual resynchronization. The sessions used different RSA moduli and OAEP
 secrets, establishing that no earlier-session constant leaked into the method.
 
@@ -284,7 +285,7 @@ construction.
 
 ### 5.1 Startup sequence
 
-All four decoded world sessions begin with the same packet pattern:
+All five decoded world sessions begin with the same packet pattern:
 
 ```text
 13 36 || session/setup payload    # first RC4 body, observed length 158
@@ -294,7 +295,7 @@ All four decoded world sessions begin with the same packet pattern:
 ...
 ```
 
-All four decoded `13 36` bodies have the same 158-byte layout:
+All five decoded `13 36` bodies have the same 158-byte layout:
 
 ```text
 13 36
@@ -315,7 +316,7 @@ stable_identifier ':' connection_identifier 00
 ```
 
 Both decoded identifiers are 36-character UUID strings. The first remained
-constant across all four samples, while the second changed in every world
+constant across all five samples, while the second changed in every world
 session. The UUID within `primary_identifier` had an intermediate lifetime: it
 was shared by the first two samples and changed in the later captures. These
 variation-based names are intentionally neutral; none establishes whether a
@@ -414,7 +415,7 @@ Several useful structural observations are already reproducible:
   source and final-byte meaning remain open.
 - `04 37` and `05 37` are timestamp-only markers with the exact layout
   `opcode:bytes[2] || client_unix_ms:u64le`. All 29 and 27 bodies respectively
-  in the four-session snapshot are exactly 10 bytes long, and every retained
+  in the five-session snapshot are exactly 10 bytes long, and every retained
   plaintext value matches the packet timeline. Both occur near movement and
   skill transitions; their exact semantic distinction remains open.
 - Sampled `3A 38` and `3C 38` packets are opcode-only.
@@ -558,7 +559,7 @@ Hellfire-only capture separates button press, cast completion, impact, and
 cancellation.
 
 Two opcode-only packets form another repeatable skill-request boundary. The
-four-session snapshot contains exactly 869 instances each of `3A 38` and
+five-session snapshot contains exactly 870 instances each of `3A 38` and
 `3C 38`. Four controlled pairs bracketed Flame Arrow, Blaze, Bittercold Wind,
 and Firestorm requests:
 
@@ -589,11 +590,11 @@ target selection from per-skill target context.
 
 Dodge provides a second independently structured sequence. All retained
 `0E 37` packets use skill `15000100` or variant `15000101`; the public skill
-catalog names `15000100` as Dodge. A request is normally followed by two
-`0F 37` movement samples:
+catalog names `15000100` as Dodge. Separate controlled captures produced two
+and three `0F 37` movement samples after one request:
 
 ```text
-0E 37 -> 0F 37 -> 0F 37 -> 00 37
+0E 37 -> 0F 37 -> 0F 37 [-> 0F 37] -> action-position/movement continuation
 ```
 
 Both packets expose finite position, normalized direction, heading, and client
@@ -624,6 +625,16 @@ The fourth session isolated one stationary jump after a full client restart.
 It added 735 frames and 9,011 RC4 body bytes, confirmed the `02 37` / `03 37`
 jump layouts above, and demonstrated that returning to character selection does
 not necessarily create a new world handshake.
+
+The fifth session added 3,309 frames and 38,100 RC4 body bytes. Its ordered
+action sequence included ordinary movement, one jump, target selection and
+clear, one location-targeted skill, and one Dodge. It independently reproduced
+the mapped jump, target, skill, and Dodge layouts. Neither `04 37` nor `05 37`
+appeared anywhere in the session, so neither timestamp marker is required for
+those standard actions. The previously observed marker payload layouts remain
+valid, while their state-specific trigger remains open. The still-unmapped
+`07 37`, `0B 37`, and `13 37` packets were also absent, indicating that this
+routine movement/combat matrix does not trigger their underlying states.
 
 ### 5.5 Offline command
 
@@ -730,8 +741,8 @@ heap-layout-independent lookup took 269-297 ms internally (280 ms average).
 End-to-end wall time including Python startup was 348-385 ms (365 ms average).
 All ten keys matched the independently recovered session key. Exporting it to
 `decrypt_c2s_rc4.py` reproduced all 735 frames and 9,011 encrypted body bytes
-of the isolated-jump capture. The full-memory fallback remains opt-in through
-`--full-scan-fallback`.
+of the isolated-jump capture. The standalone locator keeps the full-memory
+fallback opt-in through `--full-scan-fallback`.
 
 The connection-aware monitor removes the need to enter or rediscover a PID.
 It can start before the world connection exists and reinitializes its cached
@@ -741,6 +752,13 @@ a 30-poll live test, automatic discovery and the initial key event completed in
 0.40-0.76 ms each (0.55 ms average). With the default 250 ms interval, normal
 readiness is therefore bounded mainly by one poll interval plus the initial
 profile lookup rather than a whole-memory scan.
+
+One later revision-3527 allocation placed the validated RC4 states outside the
+profiled owner arena. The fallback located the matching pair after reading the
+writable private-memory candidates in 2.08 seconds. The monitor now invokes
+that fallback once after four fast misses and caches the two validated state
+addresses; subsequent direct-state checks return to sub-millisecond reads.
+`--no-full-scan-fallback` disables this automatic monitor behavior.
 
 A standalone protocol client has a different lifecycle: it generates and owns
 its private key before sending `10 36`, so key availability is immediate and
@@ -811,8 +829,8 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
 - Implemented `decrypt_c2s_rc4.py` with TCP reassembly, modulus-based flow
   selection, continuous body-only RC4, opcode statistics, and per-opcode
   samples.
-- Fully decoded four independently keyed sessions, totaling 158,370 frames
-  and 1,780,675 encrypted body bytes in the latest snapshot.
+- Fully decoded five independently keyed sessions, totaling 161,679 frames
+  and 1,818,775 encrypted body bytes in the latest snapshot.
 - Added capture timestamps and opcode filters to focused C2S sampling, then
   mapped movement coordinates, client timestamps, jump transitions, skill IDs,
   and the repeated Dodge request/movement sequence in families `37` and `38`.
@@ -829,3 +847,8 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
   AES-256-ECB with strict PKCS#7 padding and added a redacting decoder.
 - Promoted `04 37` and `05 37` from anonymous observations to timestamp-marker
   layouts while deliberately leaving their action-level distinction unnamed.
+- Reproduced jump, target, location-skill, and Dodge sequences in a fifth
+  independently keyed session; the absence of `04 37` and `05 37` narrowed
+  those markers to a more specific state or action.
+- Added a one-time validated full-memory fallback to the session-key monitor
+  for allocator layouts that miss the fast owner-arena profile.

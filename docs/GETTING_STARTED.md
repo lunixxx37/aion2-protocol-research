@@ -133,7 +133,9 @@ python tools/watch_session_key.py `
 
 It waits for the connection, refreshes the ignored local key file whenever the
 session changes, and performs cached state checks between reconnects. Stop it
-with `Ctrl+C`.
+with `Ctrl+C`. If the fast owner-arena profile misses, the monitor performs one
+validated full-memory lookup after four fast misses and then caches the two
+state addresses. Disable that behavior with `--no-full-scan-fallback`.
 
 The revision-3527 fast path was measured across ten repeated runs after an
 independent restart at 269-297 ms internally and 348-385 ms including Python
@@ -142,7 +144,10 @@ the current owner without a fixed heap offset, and requires two valid RC4
 permutations carrying the same 214-byte key. A standalone client already owns
 its generated key and skips runtime recovery entirely. RSA/BIGNUM recovery
 remains available in the repository for an older capture whose live session
-state is no longer available. Cached monitor polls averaged 0.55 ms.
+state is no longer available. Cached monitor polls averaged 0.55 ms. One
+revision-3527 allocation that missed the fast owner profile completed the
+automatic fallback in 2.08 seconds; its following direct-state checks returned
+to sub-millisecond reads.
 
 Every file below `artifacts/`, except its README, is ignored by Git. Handshake
 reports and plaintext samples may contain session values.
