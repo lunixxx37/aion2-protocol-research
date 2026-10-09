@@ -352,9 +352,20 @@ request_stage:u8            # 01 in retained samples
 skill_id:u32le
 entity_id_tag:u8            # 02 in retained samples
 target_entity_id:uvarint
-targeting_and_aim_fields[variable]
+aim_heading:f32le
+target_or_aim_position:f32le[3]
+action_mode:u8
+[optional marker:u8]
+[optional_parameter_id:uvarint || optional_parameters:f32le[1 or 2]]
 client_unix_ms:u64le
 ```
+
+The six observed flag values are `01`, `05`, `A1`, `A5`, `E1`, and `E5`.
+Bit `04` adds a marker byte, always `01` in this sample. The `A*` forms add a
+varint and one float; the `E*` forms add a varint and two floats. Together with
+the two- or three-byte target varint, these optional fields explain every
+observed body length from 36 through 49 bytes without padding or unexplained
+trailing bytes. The parameter meanings remain open.
 
 Dodge provides a second independently structured sequence. All retained
 `0E 37` packets use skill `15000100` or variant `15000101`; the public skill

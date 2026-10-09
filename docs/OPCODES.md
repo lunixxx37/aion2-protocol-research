@@ -173,7 +173,7 @@ Shares the same position, packed-state, and timestamp layout as 01 37, but occur
 
 ### `00 38` — `CLIENT_SKILL_REQUEST`
 
-All 16 distinct u32 values at offset 4 across 323 retained samples match published skill IDs. Optional targeting and aim fields account for the variable body length.
+All 16 distinct u32 values at offset 4 across 323 retained samples match published skill IDs. The request flags select a fixed 17-byte aim block, an optional one-byte marker, and zero, one, or two trailing float parameters.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
@@ -183,7 +183,12 @@ All 16 distinct u32 values at offset 4 across 323 retained samples match publish
 | 4 | `u32le` | `skill_id` | confirmed |
 | 8 | `u8` | `entity_id_tag` | observed; 0x02 in retained samples |
 | 9 | `uvarint` | `target_entity_id` | inferred |
-| after target_entity_id | `bytes[variable]` | `targeting_and_aim_fields` | partial |
+| after target_entity_id | `f32le` | `aim_heading_degrees` | inferred |
+| after aim_heading_degrees | `f32le[3]` | `target_or_aim_xyz` | inferred |
+| after target_or_aim_xyz | `u8` | `action_mode` | observed |
+| if request_flags & 0x04 | `u8` | `optional_marker` | observed; 0x01 in retained samples |
+| if request_flags & 0xA0 | `uvarint` | `optional_parameter_id` | unknown |
+| after optional_parameter_id | `f32le[1 or 2]` | `optional_parameter_values` | shape confirmed; semantics unknown |
 | body_end-8 | `u64le` | `client_unix_ms` | confirmed |
 
 ### `01 36` — `CLIENT_TIME`
