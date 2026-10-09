@@ -491,12 +491,14 @@
       "encryption": "rc4",
       "confidence": "inferred",
       "body_lengths": [30],
-      "notes": "Shares the same position, packed-state, and timestamp layout as 01 37, but occurs much less often and commonly follows movement-skill sequences.",
+      "notes": "Shares the same position, movement-heading, facing-heading, mode, and timestamp layout as 01 37, but occurs much less often and commonly follows movement-skill sequences. The compressed heading decodes as value * 360 / 65536 degrees; divergence from the float heading is consistent with movement direction differing from facing direction.",
       "fields": [
         {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
         {"offset": 2, "type": "u8", "name": "movement_flags", "status": "observed; 0x02 in retained samples"},
         {"offset": 3, "type": "f32le[3]", "name": "position_xyz", "status": "confirmed"},
-        {"offset": 15, "type": "bytes[7]", "name": "packed_movement_state", "status": "unknown"},
+        {"offset": 15, "type": "u16le", "name": "movement_heading_compressed", "status": "inferred; degrees = value * 360 / 65536"},
+        {"offset": 17, "type": "f32le", "name": "facing_heading_degrees", "status": "inferred"},
+        {"offset": 21, "type": "u8", "name": "movement_mode", "status": "observed; 0x01 in retained samples"},
         {"offset": 22, "type": "u64le", "name": "client_unix_ms", "status": "confirmed"}
       ]
     },
@@ -508,12 +510,14 @@
       "encryption": "rc4",
       "confidence": "inferred",
       "body_lengths": [30],
-      "notes": "High-frequency movement update. Retained samples carry finite world coordinates and a client timestamp, commonly at roughly 10 Hz while moving.",
+      "notes": "High-frequency movement update. Retained samples carry finite world coordinates, a compressed movement heading, a float facing heading, and a client timestamp, commonly at roughly 10 Hz while moving. The compressed heading decodes as value * 360 / 65536 degrees; its occasional divergence from the float heading is consistent with strafing or backwards movement.",
       "fields": [
         {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
         {"offset": 2, "type": "u8", "name": "movement_flags", "status": "observed; 0x02 in retained samples"},
         {"offset": 3, "type": "f32le[3]", "name": "position_xyz", "status": "confirmed"},
-        {"offset": 15, "type": "bytes[7]", "name": "packed_movement_state", "status": "unknown"},
+        {"offset": 15, "type": "u16le", "name": "movement_heading_compressed", "status": "inferred; degrees = value * 360 / 65536"},
+        {"offset": 17, "type": "f32le", "name": "facing_heading_degrees", "status": "inferred"},
+        {"offset": 21, "type": "u8", "name": "movement_mode", "status": "observed; 0x01 in retained samples"},
         {"offset": 22, "type": "u64le", "name": "client_unix_ms", "status": "confirmed"}
       ]
     },
@@ -557,6 +561,43 @@
         {"offset": "if request_flags & 0xA0", "type": "uvarint", "name": "optional_parameter_id", "status": "unknown"},
         {"offset": "after optional_parameter_id", "type": "f32le[1 or 2]", "name": "optional_parameter_values", "status": "shape confirmed; semantics unknown"},
         {"offset": "body_end-8", "type": "u64le", "name": "client_unix_ms", "status": "confirmed"}
+      ]
+    },
+    {
+      "wire": "1A38",
+      "phase": "world",
+      "directions": ["C2S"],
+      "name": "CLIENT_LOCATION_SKILL_REQUEST",
+      "encryption": "rc4",
+      "confidence": "inferred",
+      "body_lengths": [27],
+      "notes": "The retained plaintext samples carry skill ID 15060150, independently catalogued as Hellfire, followed by a tagged target entity and world position. This appears to be the location-targeted skill-request form.",
+      "fields": [
+        {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
+        {"offset": 2, "type": "u32le", "name": "skill_id", "status": "confirmed; 15060150 (Hellfire) in retained samples"},
+        {"offset": 6, "type": "u8", "name": "entity_id_tag", "status": "observed; 0x02 in retained samples"},
+        {"offset": 7, "type": "uvarint", "name": "target_entity_id", "status": "inferred"},
+        {"offset": "after target_entity_id", "type": "u32le", "name": "reserved_or_flags", "status": "observed; zero in retained samples"},
+        {"offset": "after reserved_or_flags", "type": "f32le[3]", "name": "target_position_xyz", "status": "inferred"},
+        {"offset": "body_end-1", "type": "u8", "name": "action_mode", "status": "observed; zero in retained samples"}
+      ]
+    },
+    {
+      "wire": "1D38",
+      "phase": "world",
+      "directions": ["C2S"],
+      "name": "CLIENT_LOCATION_SKILL_FOLLOWUP",
+      "encryption": "rc4",
+      "confidence": "hypothesis",
+      "body_lengths": [13],
+      "notes": "A fixed 13-byte packet repeatedly follows 1A 38. Its u32 at offset 7 is 15060153, numerically adjacent to Hellfire skill ID 15060150. The exact stage and field semantics need a controlled Hellfire-only capture.",
+      "fields": [
+        {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
+        {"offset": 2, "type": "u8", "name": "followup_flags", "status": "observed; 0x07 in retained samples"},
+        {"offset": 3, "type": "u32le", "name": "sequence_or_stage", "status": "observed; 0x00000003 in retained samples"},
+        {"offset": 7, "type": "u32le", "name": "skill_variant_id", "status": "inferred; 15060153 in retained samples"},
+        {"offset": 11, "type": "u8", "name": "stage_marker", "status": "observed; 0x01 in retained samples"},
+        {"offset": 12, "type": "u8", "name": "entity_id_tag_or_mode", "status": "unknown; 0x02 in retained samples"}
       ]
     },
     {

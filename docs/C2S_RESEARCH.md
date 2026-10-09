@@ -324,7 +324,9 @@ The high-volume movement forms share this layout:
 00 37 or 01 37
 flags:u8                    # 02 in retained samples
 position:f32le[3]
-packed_movement_state[7]   # bit-level layout still open
+movement_heading:u16le     # degrees = value * 360 / 65536
+facing_heading:f32le       # signed degrees
+movement_mode:u8           # 01 in retained samples
 client_unix_ms:u64le
 ```
 
@@ -332,6 +334,12 @@ client_unix_ms:u64le
 while the character moves. `00 37` has the same shape but appears less often
 and commonly follows a movement-skill sequence. The precise distinction still
 needs a controlled start/stop/rotate capture.
+
+The 16-bit heading uses the full unsigned range as one revolution. Values
+above 180 degrees can be normalized by subtracting 360. In straight movement,
+it closely tracks the following float heading. The two values diverge during
+some samples, which is consistent with movement direction and character facing
+being represented separately, for example while strafing or moving backwards.
 
 `18 37` is an action-position snapshot:
 
@@ -366,6 +374,25 @@ varint and one float; the `E*` forms add a varint and two floats. Together with
 the two- or three-byte target varint, these optional fields explain every
 observed body length from 36 through 49 bytes without padding or unexplained
 trailing bytes. The parameter meanings remain open.
+
+`1A 38` is a separate location-targeted skill form. Every retained sample body
+has 27 bytes and the inspected samples carry skill ID `15060150`, independently
+catalogued as Hellfire:
+
+```text
+1A 38
+skill_id:u32le              # 15060150 (Hellfire) in retained samples
+entity_id_tag:u8            # 02
+target_entity_id:uvarint
+reserved_or_flags:u32le     # zero in retained samples
+target_position:f32le[3]
+action_mode:u8              # zero in retained samples
+```
+
+A fixed 13-byte `1D 38` packet repeatedly follows this request. It contains
+`15060153` at offset 7, numerically adjacent to the Hellfire skill ID, but its
+exact follow-up stage remains a hypothesis until a controlled Hellfire-only
+capture separates button press, cast completion, impact, and cancellation.
 
 Dodge provides a second independently structured sequence. All retained
 `0E 37` packets use skill `15000100` or variant `15000101`; the public skill

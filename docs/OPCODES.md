@@ -57,11 +57,13 @@ Snapshot date: `2026-10-09`; client revisions:
 | `18 37` | `0x3718` | world | C2S | `CLIENT_ACTION_POSITION` | 362 | 28 | inferred |
 | `1A 36` | `0x361A` | world | S2C | `NAME_CHECK` | — | — | parser-based |
 | `1A 37` | `0x371A` | world | S2C | `MOVEMENT_A` | — | — | parser-based |
+| `1A 38` | `0x381A` | world | C2S | `CLIENT_LOCATION_SKILL_REQUEST` | 51 | 27 | inferred |
 | `1B 37` | `0x371B` | world | S2C | `MOVEMENT_B` | — | — | parser-based |
 | `1B 56` | `0x561B` | world | S2C | `FEATURE_RELATED_UNKNOWN` | — | — | parser-based |
 | `1B 92` | `0x921B` | world | S2C | `HP_STATE` | — | — | parser-based |
 | `1C 37` | `0x371C` | world | S2C | `MOVEMENT_C` | — | — | parser-based |
 | `1D 37` | `0x371D` | world | S2C | `MOVEMENT_RELATED` | — | — | parser-based |
+| `1D 38` | `0x381D` | world | C2S | `CLIENT_LOCATION_SKILL_FOLLOWUP` | 50 | 13 | hypothesis |
 | `23 36` | `0x3623` | world | S2C | `ZONE` | — | — | parser-based |
 | `2A 38` | `0x382A` | world | S2C | `STATUS_APPLY` | — | — | parser-based |
 | `2B 38` | `0x382B` | world | S2C | `STATUS_APPLY_VARIANT` | — | — | parser-based |
@@ -94,8 +96,6 @@ Snapshot date: `2026-10-09`; client revisions:
 | `30 38` | `0x3830` | 115 | 4, 6 | Observed after successful RC4 decryption; semantics not assigned. |
 | `0B 37` | `0x370B` | 114 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `02 37` | `0x3702` | 60 | 40, 41 | Observed after successful RC4 decryption; semantics not assigned. |
-| `1A 38` | `0x381A` | 51 | 27 | Observed after successful RC4 decryption; semantics not assigned. |
-| `1D 38` | `0x381D` | 50 | 13 | Observed after successful RC4 decryption; semantics not assigned. |
 | `51 36` | `0x3651` | 42 | 6 | Observed after successful RC4 decryption; semantics not assigned. |
 | `04 37` | `0x3704` | 28 | 10 | Observed after successful RC4 decryption; semantics not assigned. |
 | `06 37` | `0x3706` | 28 | — | Observed after successful RC4 decryption; semantics not assigned. |
@@ -161,14 +161,16 @@ Regular server timestamp packet.
 
 ### `00 37` — `CLIENT_MOVEMENT_UPDATE_VARIANT`
 
-Shares the same position, packed-state, and timestamp layout as 01 37, but occurs much less often and commonly follows movement-skill sequences.
+Shares the same position, movement-heading, facing-heading, mode, and timestamp layout as 01 37, but occurs much less often and commonly follows movement-skill sequences. The compressed heading decodes as value * 360 / 65536 degrees; divergence from the float heading is consistent with movement direction differing from facing direction.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
 | 0 | `bytes[2]` | `opcode` | confirmed |
 | 2 | `u8` | `movement_flags` | observed; 0x02 in retained samples |
 | 3 | `f32le[3]` | `position_xyz` | confirmed |
-| 15 | `bytes[7]` | `packed_movement_state` | unknown |
+| 15 | `u16le` | `movement_heading_compressed` | inferred; degrees = value * 360 / 65536 |
+| 17 | `f32le` | `facing_heading_degrees` | inferred |
+| 21 | `u8` | `movement_mode` | observed; 0x01 in retained samples |
 | 22 | `u64le` | `client_unix_ms` | confirmed |
 
 ### `00 38` — `CLIENT_SKILL_REQUEST`
@@ -202,14 +204,16 @@ A newly sampled client timestamp, not an exact echo of the preceding server tick
 
 ### `01 37` — `CLIENT_MOVEMENT_UPDATE`
 
-High-frequency movement update. Retained samples carry finite world coordinates and a client timestamp, commonly at roughly 10 Hz while moving.
+High-frequency movement update. Retained samples carry finite world coordinates, a compressed movement heading, a float facing heading, and a client timestamp, commonly at roughly 10 Hz while moving. The compressed heading decodes as value * 360 / 65536 degrees; its occasional divergence from the float heading is consistent with strafing or backwards movement.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
 | 0 | `bytes[2]` | `opcode` | confirmed |
 | 2 | `u8` | `movement_flags` | observed; 0x02 in retained samples |
 | 3 | `f32le[3]` | `position_xyz` | confirmed |
-| 15 | `bytes[7]` | `packed_movement_state` | unknown |
+| 15 | `u16le` | `movement_heading_compressed` | inferred; degrees = value * 360 / 65536 |
+| 17 | `f32le` | `facing_heading_degrees` | inferred |
+| 21 | `u8` | `movement_mode` | observed; 0x01 in retained samples |
 | 22 | `u64le` | `client_unix_ms` | confirmed |
 
 ### `0E 37` — `CLIENT_DODGE_REQUEST`
@@ -300,6 +304,33 @@ Position and heading snapshot that frequently appears immediately before 00 38 s
 | 4 | `f32le[3]` | `position_xyz` | confirmed |
 | 16 | `f32le` | `heading_degrees` | inferred |
 | 20 | `u64le` | `client_unix_ms` | confirmed |
+
+### `1A 38` — `CLIENT_LOCATION_SKILL_REQUEST`
+
+The retained plaintext samples carry skill ID 15060150, independently catalogued as Hellfire, followed by a tagged target entity and world position. This appears to be the location-targeted skill-request form.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `u32le` | `skill_id` | confirmed; 15060150 (Hellfire) in retained samples |
+| 6 | `u8` | `entity_id_tag` | observed; 0x02 in retained samples |
+| 7 | `uvarint` | `target_entity_id` | inferred |
+| after target_entity_id | `u32le` | `reserved_or_flags` | observed; zero in retained samples |
+| after reserved_or_flags | `f32le[3]` | `target_position_xyz` | inferred |
+| body_end-1 | `u8` | `action_mode` | observed; zero in retained samples |
+
+### `1D 38` — `CLIENT_LOCATION_SKILL_FOLLOWUP`
+
+A fixed 13-byte packet repeatedly follows 1A 38. Its u32 at offset 7 is 15060153, numerically adjacent to Hellfire skill ID 15060150. The exact stage and field semantics need a controlled Hellfire-only capture.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `u8` | `followup_flags` | observed; 0x07 in retained samples |
+| 3 | `u32le` | `sequence_or_stage` | observed; 0x00000003 in retained samples |
+| 7 | `u32le` | `skill_variant_id` | inferred; 15060153 in retained samples |
+| 11 | `u8` | `stage_marker` | observed; 0x01 in retained samples |
+| 12 | `u8` | `entity_id_tag_or_mode` | unknown; 0x02 in retained samples |
 
 ### `40 8D` — `CLIENT_ZLIB_BLOB`
 
