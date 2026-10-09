@@ -228,9 +228,10 @@ The latest reproducible snapshot is:
 | revision 3527, flow A | 22,112 | 345,763 | 15,033 |
 | revision 3527, flow B after restart | 133,281 | 1,397,381 | 129,274 |
 | revision 3527, controlled actions | 2,242 | 28,520 | 1,950 |
-| **total** | **157,635** | **1,771,664** | **146,257** |
+| revision 3527, isolated jump | 735 | 9,011 | 694 |
+| **total** | **158,370** | **1,780,675** | **146,951** |
 
-All three streams remained aligned to the last complete captured frame without
+All four streams remained aligned to the last complete captured frame without
 manual resynchronization. The sessions used different RSA moduli and OAEP
 secrets, establishing that no earlier-session constant leaked into the method.
 
@@ -351,6 +352,48 @@ it closely tracks the following float heading. The two values diverge during
 some samples, which is consistent with movement direction and character facing
 being represented separately, for example while strafing or moving backwards.
 
+An independently keyed fourth session isolated one stationary Space-key jump.
+It produced this complete 877 ms non-time sequence:
+
+```text
+02 37 -> 03 37 -> 03 37 -> 03 37 -> 02 37
+      -> 03 37 -> 03 37 -> 03 37 -> 18 37
+```
+
+`02 37` is the jump-transition form. The 40-byte takeoff packet carried
+vertical velocity `+1000`, while the 41-byte form appeared 444 ms later near
+the apex with vertical velocity `-32.096` and one additional marker byte:
+
+```text
+02 37
+transition_flags:u8
+[optional_marker:u8]
+position:f32le[3]
+heading_degrees:f32le
+velocity:f32le[3]
+movement_mode:u8
+client_unix_ms:u64le
+```
+
+`03 37` supplied six 40-byte air-movement samples at approximately 10 Hz:
+
+```text
+03 37
+movement_flags:u8           # 02 in the controlled jump
+position:f32le[3]
+heading_degrees:f32le
+velocity:f32le[3]
+movement_mode:u8            # 01
+client_unix_ms:u64le
+```
+
+X/Y and heading stayed fixed. Position Z rose from the original ground value
+through the apex and fell again, while velocity Z progressed from `+739.115`
+through positive, near-zero, and negative values to `-797.065`. The final
+`18 37` restored the exact original ground position. This establishes `02 37`
+as jump transitions and `03 37` as jump movement rather than generic movement
+variants.
+
 `18 37` is an action-position snapshot:
 
 ```text
@@ -358,8 +401,10 @@ being represented separately, for example while strafing or moving backwards.
       || client_unix_ms:u64le
 ```
 
-It frequently appears immediately before `00 38`. The `00 38` body contains a
-`u32le` at offset 4. All 16 distinct values across 323 retained packets match
+It frequently appears immediately before `00 38`, but the isolated jump also
+used it as the final ground-position snapshot. It is therefore an action
+position packet rather than a skill-specific prefix. The `00 38` body contains
+a `u32le` at offset 4. All 16 distinct values across 323 retained packets match
 published skill IDs, including Dodge, Flame Arrow, Firestorm, Blaze, and
 Pyroclasm. This establishes the following partial request header:
 
@@ -407,7 +452,7 @@ Hellfire-only capture separates button press, cast completion, impact, and
 cancellation.
 
 Two opcode-only packets form another repeatable skill-request boundary. The
-three-session snapshot contains exactly 869 instances each of `3A 38` and
+four-session snapshot contains exactly 869 instances each of `3A 38` and
 `3C 38`. Four controlled pairs bracketed Flame Arrow, Blaze, Bittercold Wind,
 and Firestorm requests:
 
@@ -452,7 +497,7 @@ The exact layouts and confidence labels are maintained in `opcodes.json`.
 Raw character positions, entity identifiers, and timestamps remain in ignored
 local artifacts.
 
-### 5.4 Controlled-action capture
+### 5.4 Controlled-action captures
 
 The third independently keyed session was captured from before connection
 setup through the action test. It added 2,242 decrypted C2S frames and 28,520
@@ -468,6 +513,11 @@ The decoded skill IDs independently resolve to Dodge, Flame Arrow, Blaze,
 Bittercold Wind, Firestorm, and Wish of Concentration. Capture-specific entity
 IDs, coordinates, clock values, the OAEP secret, and the private key remain in
 ignored local artifacts.
+
+The fourth session isolated one stationary jump after a full client restart.
+It added 735 frames and 9,011 RC4 body bytes, confirmed the `02 37` / `03 37`
+jump layouts above, and demonstrated that returning to character selection does
+not necessarily create a new world handshake.
 
 ### 5.5 Offline command
 
@@ -519,8 +569,8 @@ process-memory inspection. It neither injects code nor pauses the process.
 ### 6.2 Read-only tools
 
 - `scan_process_rsa.py` finds a captured modulus and candidate RSA layouts.
-- `locate_session_key.py` follows the profiled owner arena to the two live RC4
-  states and exports their shared 214-byte key.
+- `locate_session_key.py` finds the network owner through its runtime vtable,
+  follows it to the two live RC4 states, and exports their shared 214-byte key.
 - `watch_session_key.py` discovers the live world process and refreshes the
   ignored local key file across session changes.
 - `scan_process_rsa_public.py` locates runtime public-key objects.
@@ -561,28 +611,28 @@ from an earlier process run does not apply to the next session.
 The generic RSA/BIGNUM recovery path is a research fallback. In the controlled
 session it made several passes over roughly 17-22 GB of readable virtual
 memory, so it took minutes. `locate_session_key.py` now implements the intended
-fast path instead. It derives the RC4 vtable from a constructor signature,
-checks the profiled `network_owner` arena, and follows `+0xE20` / `+0xE30` to
-the two live states. A result is accepted only when both objects contain valid
-256-byte permutations and the same 214-byte key.
+fast path instead. It derives the RC4 vtable from a constructor signature and
+uses the adjacent network-owner vtable to locate the current owner allocation
+without relying on a fixed heap offset. The owner then exposes the two live
+states through its `+0xE20` / `+0xE30` area. A result is accepted only when
+both objects contain valid 256-byte permutations and the same 214-byte key.
 
-Across ten repeated revision-3527 tests, the complete internal lookup took
-164-230 ms (197 ms average). End-to-end wall time including Python startup was
-253-324 ms (285 ms average). All ten keys matched the independently decrypted
-OAEP plaintext. Exporting the raw key and passing it to `decrypt_c2s_rc4.py`
-reproduced all 2,242 frames and 28,520 encrypted body bytes of the controlled
-capture. The full-memory fallback is opt-in through `--full-scan-fallback`, so
-a version-profile miss is reported quickly instead of causing a minutes-long
-startup delay.
+Across ten repeated revision-3527 tests after the independent restart, the
+heap-layout-independent lookup took 269-297 ms internally (280 ms average).
+End-to-end wall time including Python startup was 348-385 ms (365 ms average).
+All ten keys matched the independently recovered session key. Exporting it to
+`decrypt_c2s_rc4.py` reproduced all 735 frames and 9,011 encrypted body bytes
+of the isolated-jump capture. The full-memory fallback remains opt-in through
+`--full-scan-fallback`.
 
 The connection-aware monitor removes the need to enter or rediscover a PID.
 It can start before the world connection exists and reinitializes its cached
 process-local addresses after a disconnect, reconnect, or process restart. In
 a 30-poll live test, automatic discovery and the initial key event completed in
-257 ms including monitor setup. The following 29 cached polls took 0.36-0.83 ms
-each (0.47 ms average). With the default 250 ms interval, normal readiness is
-therefore bounded mainly by one poll interval plus the initial profile lookup
-rather than a whole-memory scan.
+285 ms inside the running monitor. The following 29 cached polls took
+0.40-0.76 ms each (0.55 ms average). With the default 250 ms interval, normal
+readiness is therefore bounded mainly by one poll interval plus the initial
+profile lookup rather than a whole-memory scan.
 
 A standalone protocol client has a different lifecycle: it generates and owns
 its private key before sending `10 36`, so key availability is immediate and
@@ -653,11 +703,11 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
 - Implemented `decrypt_c2s_rc4.py` with TCP reassembly, modulus-based flow
   selection, continuous body-only RC4, opcode statistics, and per-opcode
   samples.
-- Fully decoded three independently keyed sessions, totaling 157,635 frames
-  and 1,771,664 encrypted body bytes in the latest snapshot.
+- Fully decoded four independently keyed sessions, totaling 158,370 frames
+  and 1,780,675 encrypted body bytes in the latest snapshot.
 - Added capture timestamps and opcode filters to focused C2S sampling, then
-  mapped movement coordinates, client timestamps, skill IDs, and the repeated
-  Dodge request/movement sequence in families `37` and `38`.
+  mapped movement coordinates, client timestamps, jump transitions, skill IDs,
+  and the repeated Dodge request/movement sequence in families `37` and `38`.
 - Implemented `aion2_client_crypto.py` with standalone RSA handshake generation,
   OAEP recovery, continuous C2S framing, and deterministic self-tests.
 - Implemented and benchmarked direct live-session recovery through the owner

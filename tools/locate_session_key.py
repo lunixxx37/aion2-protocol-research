@@ -55,7 +55,7 @@ PREFERRED_HEAP_END = 0x1_0000_0000
 OWNER_ARENA_START = 0x2_0000_0000
 OWNER_ARENA_END = 0x3_0000_0000
 OWNER_REGION_SIZE = 0x10000
-OWNER_REGION_OFFSET = 0x50C0
+NETWORK_OWNER_VTABLE_DELTA = 0x148
 OWNER_RSA_SLOT = 0xE10
 OWNER_STATE_A_SLOT = 0xE20
 OWNER_STATE_B_SLOT = 0xE30
@@ -484,35 +484,19 @@ def locate_states_via_owner_arena(
     expected_key_sha256: str | None,
     owner_hint: int | None,
 ) -> tuple[list[dict], dict[str, bytes], dict, int | None]:
-    if owner_hint is not None:
-        candidates = [owner_hint]
-        regions_considered = 0
-    else:
-        regions = [
-            region
-            for region in reader.regions(OWNER_ARENA_START, OWNER_ARENA_END)
-            if writable_private_region(region)
-            and region["size"] == OWNER_REGION_SIZE
-        ]
-        candidates = [
-            region["base"] + OWNER_REGION_OFFSET for region in regions
-        ]
-        regions_considered = len(regions)
-
     stats = {
-        "method": "owner_hint" if owner_hint is not None else "owner_arena",
-        "regions_considered": regions_considered,
+        "method": "owner_hint" if owner_hint is not None else "owner_arena_pattern",
+        "regions_considered": 0,
+        "regions_read": 0,
         "owner_candidates_read": 0,
         "bytes_read": 0,
         "read_failures": 0,
     }
-    for owner in candidates:
-        slots = reader.read(owner + OWNER_RSA_SLOT, 0x30)
-        if slots is None:
-            stats["read_failures"] += 1
-            continue
+
+    def validate_owner(
+        owner: int, slots: tuple[int, int, int, int, int, int]
+    ) -> tuple[list[dict], dict[str, bytes], dict, int] | None:
         stats["owner_candidates_read"] += 1
-        stats["bytes_read"] += len(slots)
         (
             rsa_object,
             rsa_control,
@@ -520,14 +504,11 @@ def locate_states_via_owner_arena(
             control_a,
             state_b,
             control_b,
-        ) = struct.unpack("<6Q", slots)
-        if (
-            not rsa_object
-            or not rsa_control
-            or control_a != state_a - 0x10
-            or control_b != state_b - 0x10
-        ):
-            continue
+        ) = slots
+        if not rsa_object or not rsa_control:
+            return None
+        if control_a != state_a - 0x10 or control_b != state_b - 0x10:
+            return None
         validated_a = validate_rc4_state(
             reader, state_a, vtable, expected_key_sha256
         )
@@ -535,18 +516,93 @@ def locate_states_via_owner_arena(
             reader, state_b, vtable, expected_key_sha256
         )
         if validated_a is None or validated_b is None:
-            continue
+            return None
         item_a, key_a = validated_a
         item_b, key_b = validated_b
         if key_a != key_b:
-            continue
+            return None
         key_hash = item_a["key_sha256"]
         if expected_key_sha256 is not None and key_hash != expected_key_sha256:
-            continue
+            return None
         item_a["role"] = "state_a"
         item_b["role"] = "state_b"
         stats["rsa_handler_present"] = True
         return [item_a, item_b], {key_hash: key_a}, stats, owner
+
+    if owner_hint is not None:
+        raw = reader.read(owner_hint + OWNER_RSA_SLOT, 0x30)
+        if raw is None:
+            stats["read_failures"] += 1
+            return [], {}, stats, None
+        stats["bytes_read"] += len(raw)
+        validated = validate_owner(owner_hint, struct.unpack("<6Q", raw))
+        return validated if validated is not None else ([], {}, stats, None)
+
+    regions = [
+        region
+        for region in reader.regions(OWNER_ARENA_START, OWNER_ARENA_END)
+        if writable_private_region(region)
+        and region["size"] == OWNER_REGION_SIZE
+    ]
+    regions.sort(key=lambda region: region["base"], reverse=True)
+    stats["regions_considered"] = len(regions)
+    owner_vtable = struct.pack("<Q", vtable + NETWORK_OWNER_VTABLE_DELTA)
+    for region in regions:
+        block = reader.read(region["base"], region["size"])
+        if block is None:
+            stats["read_failures"] += 1
+            continue
+        stats["regions_read"] += 1
+        stats["bytes_read"] += len(block)
+        cursor = 0
+        while True:
+            offset = block.find(owner_vtable, cursor)
+            if offset < 0:
+                break
+            cursor = offset + 1
+            slots_offset = offset + OWNER_RSA_SLOT
+            if slots_offset + 0x30 > len(block):
+                continue
+            owner = region["base"] + offset
+            slots = struct.unpack_from("<6Q", block, slots_offset)
+            validated = validate_owner(owner, slots)
+            if validated is not None:
+                stats["method"] = "owner_vtable"
+                stats["owner_vtable"] = (
+                    f"0x{vtable + NETWORK_OWNER_VTABLE_DELTA:016X}"
+                )
+                return validated
+
+    stats["method"] = "owner_arena_pattern"
+    for region in regions:
+        block = reader.read(region["base"], region["size"])
+        if block is None:
+            stats["read_failures"] += 1
+            continue
+        stats["regions_read"] += 1
+        stats["bytes_read"] += len(block)
+        for offset in range(0, len(block) - 0x30 + 1, 0x10):
+            slots = struct.unpack_from("<6Q", block, offset)
+            (
+                rsa_object,
+                rsa_control,
+                state_a,
+                control_a,
+                state_b,
+                control_b,
+            ) = slots
+            if (
+                rsa_object
+                and rsa_control
+                and state_a
+                and state_b
+                and control_a == state_a - 0x10
+                and control_b == state_b - 0x10
+            ):
+                owner = region["base"] + offset - OWNER_RSA_SLOT
+                validated = validate_owner(owner, slots)
+                if validated is not None:
+                    return validated
     return [], {}, stats, None
 
 

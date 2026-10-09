@@ -118,14 +118,14 @@ It waits for the connection, refreshes the ignored local key file whenever the
 session changes, and performs cached state checks between reconnects. Stop it
 with `Ctrl+C`.
 
-The revision-3527 fast path was measured across ten repeated runs at 164-230 ms
-internally and 253-324 ms including Python startup. It derives the vtable from
-runtime code, finds the profiled `network_owner`, and requires two valid RC4
+The revision-3527 fast path was measured across ten repeated runs after an
+independent restart at 269-297 ms internally and 348-385 ms including Python
+startup. It derives the RC4 and network-owner vtables from runtime code, locates
+the current owner without a fixed heap offset, and requires two valid RC4
 permutations carrying the same 214-byte key. A standalone client already owns
 its generated key and skips runtime recovery entirely. RSA/BIGNUM recovery
 remains available in the repository for an older capture whose live session
-state is no longer available. In a live monitor test, the automatic PID lookup
-plus first key recovery took 214 ms and cached polls averaged 0.47 ms.
+state is no longer available. Cached monitor polls averaged 0.55 ms.
 
 Every file below `artifacts/`, except its README, is ignored by Git. Handshake
 reports and plaintext samples may contain session values.

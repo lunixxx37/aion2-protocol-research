@@ -35,8 +35,8 @@ RC4 key.
 
 RC4 is continuous across every post-handshake C2S frame body. The outer
 unsigned-varint length remains clear and consumes no keystream. This model was
-validated over more than 157,000 frames and 1.7 million encrypted body bytes
-across three independently keyed world sessions.
+validated over more than 158,000 frames and 1.7 million encrypted body bytes
+across four independently keyed world sessions.
 
 ## Documentation
 
@@ -167,14 +167,14 @@ python tools/decrypt_c2s_rc4.py `
   --json artifacts\c2s-rc4-decrypt.json
 ```
 
-The locator derives the RC4 vtable from runtime code, searches the profiled
-network-owner arena, and accepts only two states with valid 256-byte RC4
-permutations and the same key. Ten repeated local tests completed the internal
-lookup in 164-230 ms (197 ms average), or 253-324 ms including Python process
-startup. A live automatic-PID test completed in 214 ms; subsequent monitor
-polls took 0.36-0.83 ms (0.47 ms average). The profile is revision-specific;
-`--full-scan-fallback` explicitly enables the older slow search if a later
-client build moves the owner object.
+The locator derives the RC4 and adjacent network-owner vtables from runtime
+code, locates the current owner allocation without a fixed heap offset, and
+accepts only two states with valid 256-byte RC4 permutations and the same key.
+Ten repeated local tests after an independent restart completed the internal
+lookup in 269-297 ms (280 ms average), or 348-385 ms including Python process
+startup. Subsequent monitor polls took 0.40-0.76 ms (0.55 ms average). The
+profile is revision-specific; `--full-scan-fallback` explicitly enables the
+older slow search if a later client build changes the object layout.
 
 ## Original-client RSA recovery fallback
 

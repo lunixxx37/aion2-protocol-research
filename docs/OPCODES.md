@@ -8,10 +8,10 @@ evidence, not as proof of packet meaning.
 
 ## Capture snapshot
 
-The local C2S snapshot combines **3** independently keyed
-world sessions, **157,635** decrypted frames, and
-**1,771,664** RC4 body bytes. It contains
-**146,257** confirmed `01 36` time packets.
+The local C2S snapshot combines **4** independently keyed
+world sessions, **158,370** decrypted frames, and
+**1,780,675** RC4 body bytes. It contains
+**146,951** confirmed `01 36` time packets.
 Snapshot date: `2026-10-09`; client revisions:
 `3526`, `3527`.
 
@@ -31,14 +31,16 @@ Snapshot date: `2026-10-09`; client revisions:
 | `00 38` | `0x3800` | world | C2S | `CLIENT_SKILL_REQUEST` | 971 | 36, 37, 38, 43, 44, 45, 47, 48, 49 | inferred |
 | `00 61` | `0x6100` | world | S2C | `DUNGEON_RUN_STATE` | — | — | parser-based |
 | `00 8D` | `0x8D00` | world | S2C | `HP_UPDATE` | — | — | parser-based |
-| `01 36` | `0x3601` | world | C2S | `CLIENT_TIME` | 146,257 | 10 | locally-confirmed |
+| `01 36` | `0x3601` | world | C2S | `CLIENT_TIME` | 146,951 | 10 | locally-confirmed |
 | `01 37` | `0x3701` | world | C2S | `CLIENT_MOVEMENT_UPDATE` | 4,780 | 29, 30 | inferred |
 | `01 61` | `0x6101` | world | S2C | `DUNGEON_RESULT` | — | — | parser-based |
 | `01 91` | `0x9101` | world | S2C | `NPC_BROADCAST` | — | — | parser-based |
-| `02 36` | `0x3602` | world | C2S | `CLIENT_PERIODIC_TELEMETRY` | 782 | 11 | hypothesis |
+| `02 36` | `0x3602` | world | C2S | `CLIENT_PERIODIC_TELEMETRY` | 786 | 11 | hypothesis |
+| `02 37` | `0x3702` | world | C2S | `CLIENT_JUMP_TRANSITION` | 63 | 40, 41 | inferred |
 | `02 38` | `0x3802` | world | S2C | `ACTION_OR_CAST` | — | — | parser-based |
 | `02 97` | `0x9702` | world | S2C | `PARTY_STATE` | — | — | parser-based |
 | `03 36` | `0x3603` | world | S2C | `WORLD_PING` | — | — | parser-based |
+| `03 37` | `0x3703` | world | C2S | `CLIENT_JUMP_MOVEMENT` | 244 | 40 | inferred |
 | `03 38` | `0x3803` | world | S2C | `NPC_POSITION` | — | — | parser-based |
 | `04 38` | `0x3804` | world | S2C | `DIRECT_DAMAGE` | — | — | publicly-confirmed |
 | `04 8D` | `0x8D04` | world | S2C | `NICKNAME_OR_OWNER` | — | — | parser-based |
@@ -50,12 +52,12 @@ Snapshot date: `2026-10-09`; client revisions:
 | `0E 38` | `0x380E` | world | S2C | `TARGET_SELECTED` | — | — | parser-based |
 | `0F 37` | `0x370F` | world | C2S | `CLIENT_DODGE_MOVEMENT` | 228 | 39, 40 | inferred |
 | `10 36` | `0x3610` | world | C2S | `CLIENT_RSA_HANDSHAKE` | — | 283 | locally-confirmed |
-| `10 56` | `0x5610` | world | C2S | `CLIENT_STARTUP_SIGNAL` | 3 | 2 | observed |
+| `10 56` | `0x5610` | world | C2S | `CLIENT_STARTUP_SIGNAL` | 4 | 2 | observed |
 | `11 36` | `0x3611` | world | S2C | `SERVER_RSA_HANDSHAKE` | — | 278 | locally-confirmed |
-| `13 36` | `0x3613` | world | C2S | `CLIENT_SESSION_SETUP` | 3 | 158 | inferred |
+| `13 36` | `0x3613` | world | C2S | `CLIENT_SESSION_SETUP` | 4 | 158 | inferred |
 | `15 36` | `0x3615` | world | S2C | `LOGIN_OR_SERVER_TRANSFER` | — | — | inferred |
 | `16 36` | `0x3616` | world | S2C | `GAME_SERVER_INFO` | — | — | inferred |
-| `18 37` | `0x3718` | world | C2S | `CLIENT_ACTION_POSITION` | 368 | 28 | inferred |
+| `18 37` | `0x3718` | world | C2S | `CLIENT_ACTION_POSITION` | 369 | 28 | inferred |
 | `1A 36` | `0x361A` | world | S2C | `NAME_CHECK` | — | — | parser-based |
 | `1A 37` | `0x371A` | world | S2C | `MOVEMENT_A` | — | — | parser-based |
 | `1A 38` | `0x381A` | world | C2S | `CLIENT_LOCATION_SKILL_REQUEST` | 51 | 27 | inferred |
@@ -89,47 +91,46 @@ Snapshot date: `2026-10-09`; client revisions:
 
 | Wire | LE value | Frames | Sampled body lengths | Notes |
 |---|---|---|---|---|
-| `A1 FF` | `0xFFA1` | 258 | 20, 21 | Not an outer LZ4 marker; compressed outer bodies require FF FF. |
+| `A1 FF` | `0xFFA1` | 259 | 20, 21 | Not an outer LZ4 marker; compressed outer bodies require FF FF. |
 | `07 37` | `0x3707` | 245 | — | Observed after successful RC4 decryption; semantics not assigned. |
-| `03 37` | `0x3703` | 238 | 40 | Observed after successful RC4 decryption; semantics not assigned. |
 | `13 37` | `0x3713` | 214 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `17 90` | `0x9017` | 144 | 10 | The three retained plaintext samples were byte-identical. |
 | `0B 37` | `0x370B` | 114 | — | Observed after successful RC4 decryption; semantics not assigned. |
-| `02 37` | `0x3702` | 61 | 40, 41 | Observed after successful RC4 decryption; semantics not assigned. |
-| `51 36` | `0x3651` | 49 | 6 | Observed after successful RC4 decryption; semantics not assigned. |
+| `51 36` | `0x3651` | 56 | 6 | Observed after successful RC4 decryption; semantics not assigned. |
 | `04 37` | `0x3704` | 29 | 10 | Observed after successful RC4 decryption; semantics not assigned. |
 | `06 37` | `0x3706` | 28 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `11 37` | `0x3711` | 28 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `05 37` | `0x3705` | 27 | 10 | Observed after successful RC4 decryption; semantics not assigned. |
+| `56 8D` | `0x8D56` | 15 | 4 | Observed after successful RC4 decryption; semantics not assigned. |
 | `36 36` | `0x3636` | 14 | 18 | Observed after successful RC4 decryption; semantics not assigned. |
-| `56 8D` | `0x8D56` | 14 | 4 | Observed after successful RC4 decryption; semantics not assigned. |
 | `0A 37` | `0x370A` | 10 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `12 56` | `0x5612` | 10 | 10 | Observed after successful RC4 decryption; semantics not assigned. |
+| `59 E2` | `0xE259` | 10 | 440, 632, 648 | Observed after successful RC4 decryption; semantics not assigned. |
+| `04 8A` | `0x8A04` | 9 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
+| `00 43` | `0x4300` | 8 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
 | `00 91` | `0x9100` | 8 | 6 | Observed after successful RC4 decryption; semantics not assigned. |
 | `01 90` | `0x9001` | 8 | — | Observed after successful RC4 decryption; semantics not assigned. |
-| `04 8A` | `0x8A04` | 8 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
-| `59 E2` | `0xE259` | 8 | 440, 632, 648 | Observed after successful RC4 decryption; semantics not assigned. |
-| `00 43` | `0x4300` | 7 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
-| `02 8A` | `0x8A02` | 7 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
+| `02 8A` | `0x8A02` | 8 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
+| `14 E2` | `0xE214` | 8 | 20 | Observed after successful RC4 decryption; semantics not assigned. |
+| `22 36` | `0x3622` | 8 | 62 | Observed after successful RC4 decryption; semantics not assigned. |
+| `44 8A` | `0x8A44` | 8 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
+| `48 36` | `0x3648` | 8 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
+| `A0 FF` | `0xFFA0` | 8 | 21 | Observed after successful RC4 decryption; semantics not assigned. |
 | `0B 91` | `0x910B` | 7 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
 | `10 37` | `0x3710` | 7 | — | Observed after successful RC4 decryption; semantics not assigned. |
-| `22 36` | `0x3622` | 7 | 62 | Observed after successful RC4 decryption; semantics not assigned. |
-| `44 8A` | `0x8A44` | 7 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
-| `48 36` | `0x3648` | 7 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
-| `A0 FF` | `0xFFA0` | 7 | 21 | Observed after successful RC4 decryption; semantics not assigned. |
 | `0D 37` | `0x370D` | 6 | — | Observed after successful RC4 decryption; semantics not assigned. |
-| `14 E2` | `0xE214` | 6 | 20 | Observed after successful RC4 decryption; semantics not assigned. |
+| `48 E3` | `0xE348` | 5 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
+| `A7 56` | `0x56A7` | 5 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
+| `0E 57` | `0x570E` | 4 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
 | `22 8D` | `0x8D22` | 4 | — | Observed after successful RC4 decryption; semantics not assigned. |
-| `48 E3` | `0xE348` | 4 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
-| `A7 56` | `0x56A7` | 4 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
+| `4C 8D` | `0x8D4C` | 4 | 10 | Observed after successful RC4 decryption; semantics not assigned. |
+| `4D E3` | `0xE34D` | 4 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
 | `08 37` | `0x3708` | 3 | — | Observed after successful RC4 decryption; semantics not assigned. |
-| `0E 57` | `0x570E` | 3 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
 | `30 8D` | `0x8D30` | 3 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `3D 36` | `0x363D` | 3 | — | Observed after successful RC4 decryption; semantics not assigned. |
-| `4C 8D` | `0x8D4C` | 3 | 10 | Observed after successful RC4 decryption; semantics not assigned. |
-| `4D E3` | `0xE34D` | 3 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
 | `89 56` | `0x5689` | 3 | 8 | Observed after successful RC4 decryption; semantics not assigned. |
 | `12 37` | `0x3712` | 2 | — | Observed after successful RC4 decryption; semantics not assigned. |
+| `1F 36` | `0x361F` | 2 | 20 | Observed after successful RC4 decryption; semantics not assigned. |
 | `2B E3` | `0xE32B` | 2 | 4 | Observed after successful RC4 decryption; semantics not assigned. |
 | `46 56` | `0x5646` | 2 | 15 | Observed after successful RC4 decryption; semantics not assigned. |
 | `01 44` | `0x4401` | 1 | — | Observed after successful RC4 decryption; semantics not assigned. |
@@ -141,7 +142,6 @@ Snapshot date: `2026-10-09`; client revisions:
 | `12 E2` | `0xE212` | 1 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
 | `13 90` | `0x9013` | 1 | 6 | Observed after successful RC4 decryption; semantics not assigned. |
 | `14 57` | `0x5714` | 1 | — | Observed after successful RC4 decryption; semantics not assigned. |
-| `1F 36` | `0x361F` | 1 | 20 | Observed after successful RC4 decryption; semantics not assigned. |
 | `20 56` | `0x5620` | 1 | 12 | Observed after successful RC4 decryption; semantics not assigned. |
 | `25 92` | `0x9225` | 1 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `32 E2` | `0xE232` | 1 | 6 | Observed after successful RC4 decryption; semantics not assigned. |
@@ -228,6 +228,35 @@ The first three consecutive retained samples increase the u64 value by exactly 1
 | 2 | `u64le` | `monotonic_time_ms` | inferred; exact +10000 steps in consecutive retained samples |
 | 10 | `u8` | `telemetry_value` | unknown; variable in retained samples |
 
+### `02 37` — `CLIENT_JUMP_TRANSITION`
+
+An isolated stationary jump emitted two 02 37 transitions: a 40-byte takeoff form with +1000 vertical velocity and a 41-byte near-apex form with an additional marker. Six 03 37 air-movement samples occurred between and after them.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `u8` | `transition_flags` | observed; 0x14 at takeoff and 0x11 near the apex in the controlled jump |
+| 3 | `u8` | `optional_marker` | present as 0x02 in the 41-byte flags-0x11 form |
+| after optional_marker if present | `f32le[3]` | `position_xyz` | confirmed |
+| after position_xyz | `f32le` | `heading_degrees` | inferred |
+| after heading_degrees | `f32le[3]` | `velocity_xyz` | inferred; Z follows the controlled jump arc |
+| body_end-9 | `u8` | `movement_mode` | observed; 0x03 at takeoff and 0x01 near the apex |
+| body_end-8 | `u64le` | `client_unix_ms` | confirmed |
+
+### `03 37` — `CLIENT_JUMP_MOVEMENT`
+
+Six 03 37 samples at approximately 10 Hz described the rising and falling phases of one isolated stationary jump. X/Y and heading remained fixed while position Z and velocity Z traced the jump arc.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `u8` | `movement_flags` | observed; 0x02 in the controlled jump |
+| 3 | `f32le[3]` | `position_xyz` | confirmed |
+| 15 | `f32le` | `heading_degrees` | inferred |
+| 19 | `f32le[3]` | `velocity_xyz` | inferred; Z follows the controlled jump arc |
+| 31 | `u8` | `movement_mode` | observed; 0x01 in the controlled jump |
+| 32 | `u64le` | `client_unix_ms` | confirmed |
+
 ### `0E 37` — `CLIENT_DODGE_REQUEST`
 
 Every retained packet carries skill 15000100 or its 15000101 variant; 15000100 is independently catalogued as Dodge. These packets begin a repeated 0E 37 -> 0F 37 -> 0F 37 movement sequence.
@@ -298,7 +327,7 @@ The 256-byte block decrypts as RSA-OAEP-SHA1 and yields the complete 214-byte RC
 
 ### `13 36` — `CLIENT_SESSION_SETUP`
 
-First encrypted body in both sessions. It contains printable identification and encoded session fields; raw values are excluded.
+First encrypted body in all four independently decoded sessions. It contains printable identification and encoded session fields; raw values are excluded.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
@@ -307,7 +336,7 @@ First encrypted body in both sessions. It contains printable identification and 
 
 ### `18 37` — `CLIENT_ACTION_POSITION`
 
-Position and heading snapshot that frequently appears immediately before 00 38 skill requests.
+Position and heading snapshot that frequently appears immediately before 00 38 skill requests. It also terminated an isolated stationary jump at the original ground position, so it is not skill-specific.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
