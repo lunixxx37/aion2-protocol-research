@@ -305,6 +305,10 @@ are still needed for movement, target, and skill labels.
 Several useful structural observations are already reproducible:
 
 - `01 36` is always a 10-byte client time body in the validated stream.
+- `02 36` is an 11-byte periodic body. Its `u64le` value at offset 2 rises by
+  exactly 10,000 between consecutive retained samples, followed by one variable
+  byte. This is consistent with ten-second monotonic telemetry, but the clock
+  source and final-byte meaning remain open.
 - Sampled `3A 38` and `3C 38` packets are opcode-only.
 - `17 90` repeatedly carries the same short structured body in sampled traffic.
 - `40 8D` contains a length-delimited zlib stream. Its declared decompressed

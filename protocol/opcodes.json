@@ -124,6 +124,21 @@
       ]
     },
     {
+      "wire": "0236",
+      "phase": "world",
+      "directions": ["C2S"],
+      "name": "CLIENT_PERIODIC_TELEMETRY",
+      "encryption": "rc4",
+      "confidence": "hypothesis",
+      "body_lengths": [11],
+      "notes": "The first three consecutive retained samples increase the u64 value by exactly 10,000 each time, consistent with a ten-second monotonic-millisecond report. The value is not a Unix timestamp and the final byte varies.",
+      "fields": [
+        {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
+        {"offset": 2, "type": "u64le", "name": "monotonic_time_ms", "status": "inferred; exact +10000 steps in consecutive retained samples"},
+        {"offset": 10, "type": "u8", "name": "telemetry_value", "status": "unknown; variable in retained samples"}
+      ]
+    },
+    {
       "wire": "0336",
       "phase": "world",
       "directions": ["S2C"],

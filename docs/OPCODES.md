@@ -35,6 +35,7 @@ Snapshot date: `2026-10-09`; client revisions:
 | `01 37` | `0x3701` | world | C2S | `CLIENT_MOVEMENT_UPDATE` | 4,573 | 30 | inferred |
 | `01 61` | `0x6101` | world | S2C | `DUNGEON_RESULT` | — | — | parser-based |
 | `01 91` | `0x9101` | world | S2C | `NPC_BROADCAST` | — | — | parser-based |
+| `02 36` | `0x3602` | world | C2S | `CLIENT_PERIODIC_TELEMETRY` | 771 | 11 | hypothesis |
 | `02 38` | `0x3802` | world | S2C | `ACTION_OR_CAST` | — | — | parser-based |
 | `02 97` | `0x9702` | world | S2C | `PARTY_STATE` | — | — | parser-based |
 | `03 36` | `0x3603` | world | S2C | `WORLD_PING` | — | — | parser-based |
@@ -88,7 +89,6 @@ Snapshot date: `2026-10-09`; client revisions:
 
 | Wire | LE value | Frames | Sampled body lengths | Notes |
 |---|---|---|---|---|
-| `02 36` | `0x3602` | 771 | 11 | Observed after successful RC4 decryption; semantics not assigned. |
 | `A1 FF` | `0xFFA1` | 255 | 20 | Not an outer LZ4 marker; compressed outer bodies require FF FF. |
 | `07 37` | `0x3707` | 245 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `03 37` | `0x3703` | 236 | 40 | Observed after successful RC4 decryption; semantics not assigned. |
@@ -215,6 +215,16 @@ High-frequency movement update. Retained samples carry finite world coordinates,
 | 17 | `f32le` | `facing_heading_degrees` | inferred |
 | 21 | `u8` | `movement_mode` | observed; 0x01 in retained samples |
 | 22 | `u64le` | `client_unix_ms` | confirmed |
+
+### `02 36` — `CLIENT_PERIODIC_TELEMETRY`
+
+The first three consecutive retained samples increase the u64 value by exactly 10,000 each time, consistent with a ten-second monotonic-millisecond report. The value is not a Unix timestamp and the final byte varies.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `u64le` | `monotonic_time_ms` | inferred; exact +10000 steps in consecutive retained samples |
+| 10 | `u8` | `telemetry_value` | unknown; variable in retained samples |
 
 ### `0E 37` — `CLIENT_DODGE_REQUEST`
 
