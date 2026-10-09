@@ -35,8 +35,8 @@ RC4 key.
 
 RC4 is continuous across every post-handshake C2S frame body. The outer
 unsigned-varint length remains clear and consumes no keystream. This model was
-validated over more than 155,000 frames and 1.7 million encrypted body bytes
-across two independently keyed world sessions.
+validated over more than 157,000 frames and 1.7 million encrypted body bytes
+across three independently keyed world sessions.
 
 ## Documentation
 

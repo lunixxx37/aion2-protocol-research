@@ -17,7 +17,7 @@ have the highest priority:
 - fully validated ephemeral RSA private keys for independent sessions;
 - matching server blocks decoded as OAEP-SHA1 with 214-byte messages;
 - runtime RC4 KSA/PRGA disassembly and exact 214-byte key-buffer matches;
-- continuous offline C2S decryption across more than 155,000 frames in two
+- continuous offline C2S decryption across more than 157,000 frames in three
   independently keyed sessions.
 
 Raw captures are excluded because they contain identity and session data.

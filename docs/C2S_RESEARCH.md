@@ -227,11 +227,12 @@ The latest reproducible snapshot is:
 |---|---:|---:|---:|
 | revision 3527, flow A | 22,112 | 345,763 | 15,033 |
 | revision 3527, flow B after restart | 133,281 | 1,397,381 | 129,274 |
-| **total** | **155,393** | **1,743,144** | **144,307** |
+| revision 3527, controlled actions | 2,242 | 28,520 | 1,950 |
+| **total** | **157,635** | **1,771,664** | **146,257** |
 
-Both streams remained aligned to the last complete captured frame without
+All three streams remained aligned to the last complete captured frame without
 manual resynchronization. The sessions used different RSA moduli and OAEP
-secrets, establishing that no first-session constant leaked into the method.
+secrets, establishing that no earlier-session constant leaked into the method.
 
 ### 4.4 Why early cipher probes reported zero matches
 
@@ -326,11 +327,11 @@ The high-volume movement forms share this layout:
 
 ```text
 00 37 or 01 37
-flags:u8                    # 02 in retained samples
+flags:u8                    # 02 while moving; 00 in the 01 37 stop form
 position:f32le[3]
 movement_heading:u16le     # degrees = value * 360 / 65536
 facing_heading:f32le       # signed degrees
-movement_mode:u8           # 01 in retained samples
+movement_mode:u8           # 01; omitted from the 29-byte flags-00 form
 client_unix_ms:u64le
 ```
 
@@ -338,6 +339,11 @@ client_unix_ms:u64le
 while the character moves. `00 37` has the same shape but appears less often
 and commonly follows a movement-skill sequence. The precise distinction still
 needs a controlled start/stop/rotate capture.
+
+The controlled capture added two 29-byte `01 37` packets with flags `00`.
+Unlike the 205 captured 30-byte packets with flags `02`, these omit the
+movement-mode byte, so the timestamp is best addressed as `body_end-8`. Their
+timing and positions are consistent with stop/idle updates.
 
 The 16-bit heading uses the full unsigned range as one revolution. Values
 above 180 degrees can be normalized by subtracting 360. In straight movement,
@@ -401,16 +407,19 @@ Hellfire-only capture separates button press, cast completion, impact, and
 cancellation.
 
 Two opcode-only packets form another repeatable skill-request boundary. The
-two-session snapshot contains exactly 865 instances each of `3A 38` and
-`3C 38`, and retained local sequences put them around a normal `00 38` request:
+three-session snapshot contains exactly 869 instances each of `3A 38` and
+`3C 38`. Four controlled pairs bracketed Flame Arrow, Blaze, Bittercold Wind,
+and Firestorm requests:
 
 ```text
 3A 38 -> [30 38 target reference] -> 00 38 skill request -> 3C 38
 ```
 
-The pair is provisionally named action-boundary begin/end. A controlled test
-that separates a quick click, a held key, and a cancelled cast is still needed
-to distinguish input press/release from protocol request begin/end.
+The controlled gaps from `3A 38` to `3C 38` were 67-107 ms; no captured pair
+remained open for a long key hold. This supports skill-request begin/end rather
+than raw key-down/key-up semantics, although a dedicated hold-only capture
+should confirm it. Dodge and the observed self-targeted Wish of Concentration
+request used their own paths and were not enclosed by the pair.
 
 `30 38` and `33 38` both have a compact target-reference shape:
 
@@ -421,9 +430,11 @@ target_entity_id:uvarint    # zero encodes no target
 ```
 
 The varint accounts exactly for the observed four- and six-byte body lengths.
-Retained sequences show the same entity value moving from `33 38` to `30 38`,
-with `30 38` frequently appearing immediately before a skill request. Their
-precise two-stage distinction remains open.
+Controlled target changes produced `33 38` with the newly selected entity;
+clearing the target produced its zero form. `30 38` instead carried the active
+target immediately before targeted skill requests, while zero was used for an
+untargeted or self-targeted request. The registry therefore distinguishes
+target selection from per-skill target context.
 
 Dodge provides a second independently structured sequence. All retained
 `0E 37` packets use skill `15000100` or variant `15000101`; the public skill
@@ -441,7 +452,24 @@ The exact layouts and confidence labels are maintained in `opcodes.json`.
 Raw character positions, entity identifiers, and timestamps remain in ignored
 local artifacts.
 
-### 5.4 Offline command
+### 5.4 Controlled-action capture
+
+The third independently keyed session was captured from before connection
+setup through the action test. It added 2,242 decrypted C2S frames and 28,520
+RC4 body bytes. The useful non-time events included:
+
+- three explicit target changes and one target clear;
+- four targeted skill requests enclosed by `3A 38` / `3C 38`;
+- a self-targeted or untargeted skill request without that enclosure;
+- one Dodge sequence using `0E 37` / `0F 37`;
+- separated movement, stop, and rotation periods.
+
+The decoded skill IDs independently resolve to Dodge, Flame Arrow, Blaze,
+Bittercold Wind, Firestorm, and Wish of Concentration. Capture-specific entity
+IDs, coordinates, clock values, the OAEP secret, and the private key remain in
+ignored local artifacts.
+
+### 5.5 Offline command
 
 ```powershell
 python tools/decrypt_c2s_rc4.py `
@@ -519,6 +547,28 @@ elevated shell was required in the local setup.
 A standalone client starts at step 6 with its own generated private key and
 does not need process-memory recovery.
 
+### 6.4 Per-session startup cost
+
+The original game creates a fresh ephemeral RSA key for every world
+connection. A passive companion therefore has to recover the matching key (or
+the resulting 214-byte OAEP plaintext) after each reconnect; a key exported
+from an earlier process run does not apply to the next session.
+
+The current generic recovery path is a research fallback. In the controlled
+session it made several passes over roughly 17-22 GB of readable virtual
+memory, so it took minutes rather than milliseconds. This is not the intended
+startup path for an end-user tool. The runtime ownership chain already exposes
+the RSA handler at `network_owner + 0xE10` and the two RC4 states at
+`network_owner + 0xE20` / `network_owner + 0xE30`. A production passive tool
+should first locate that small owner object and read the session state through
+the stable chain, using the full-memory scan only as a version-change fallback.
+The targeted locator still needs to be implemented and benchmarked before a
+sub-second startup claim can be made.
+
+A standalone protocol client has a different lifecycle: it generates and owns
+its private key before sending `10 36`, so key availability is immediate and
+there is no process scan at connection startup.
+
 ## 7. Controlled experiment matrix
 
 Each new capture should vary one visible action:
@@ -584,8 +634,8 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
 - Implemented `decrypt_c2s_rc4.py` with TCP reassembly, modulus-based flow
   selection, continuous body-only RC4, opcode statistics, and per-opcode
   samples.
-- Fully decoded two independently keyed sessions, totaling 155,393 frames and
-  1,743,144 encrypted body bytes in the latest snapshot.
+- Fully decoded three independently keyed sessions, totaling 157,635 frames
+  and 1,771,664 encrypted body bytes in the latest snapshot.
 - Added capture timestamps and opcode filters to focused C2S sampling, then
   mapped movement coordinates, client timestamps, skill IDs, and the repeated
   Dodge request/movement sequence in families `37` and `38`.
