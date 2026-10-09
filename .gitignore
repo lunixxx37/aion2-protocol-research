@@ -1,0 +1,21 @@
+*.pcap
+*.pcapng
+*.cap
+*.pem
+*.key
+*.p12
+*.pfx
+*.log
+*_ncglog.txt
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.env.*
+*API KEY*.txt
+*api-key*.txt
+*credentials*.txt
+*secret*.txt
+*token*.txt
+artifacts/*
+!artifacts/README.md

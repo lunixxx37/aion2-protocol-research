@@ -1,0 +1,3 @@
+# Optional runtime instrumentation experiment. The active workflow uses
+# read-only process memory and offline PCAP analysis instead.
+frida>=16.0
