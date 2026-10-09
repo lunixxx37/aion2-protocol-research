@@ -69,9 +69,13 @@ Snapshot date: `2026-10-09`; client revisions:
 | `2B 38` | `0x382B` | world | S2C | `STATUS_APPLY_VARIANT` | — | — | parser-based |
 | `2C 38` | `0x382C` | world | S2C | `STATUS_REMOVE` | — | — | parser-based |
 | `2F 8D` | `0x8D2F` | world | S2C | `NOTICE` | — | — | parser-based |
+| `30 38` | `0x3830` | world | C2S | `CLIENT_TARGET_REFERENCE_A` | 115 | 4, 6 | hypothesis |
 | `33 36` | `0x3633` | world | S2C | `LOCAL_PLAYER` | — | — | publicly-confirmed |
+| `33 38` | `0x3833` | world | C2S | `CLIENT_TARGET_REFERENCE_B` | 130 | 4, 6 | hypothesis |
 | `35 36` | `0x3635` | world | S2C | `SUMMON_SPAWN` | — | — | parser-based |
 | `35 38` | `0x3835` | world | S2C | `SUMMON_OR_SKILL_SEQUENCE` | — | — | parser-based |
+| `3A 38` | `0x383A` | world | C2S | `CLIENT_ACTION_BOUNDARY_BEGIN` | 865 | 2 | hypothesis |
+| `3C 38` | `0x383C` | world | C2S | `CLIENT_ACTION_BOUNDARY_END` | 865 | 2 | hypothesis |
 | `3D 38` | `0x383D` | world | S2C | `COMBAT_BATCH` | — | — | parser-based |
 | `40 36` | `0x3640` | world | S2C | `SPAWN_VARIANT` | — | — | parser-based |
 | `40 8D` | `0x8D40` | world | C2S | `CLIENT_ZLIB_BLOB` | 12 | 1361, 1362 | locally-confirmed |
@@ -84,16 +88,12 @@ Snapshot date: `2026-10-09`; client revisions:
 
 | Wire | LE value | Frames | Sampled body lengths | Notes |
 |---|---|---|---|---|
-| `3A 38` | `0x383A` | 865 | 2 | Opcode-only in all retained samples. |
-| `3C 38` | `0x383C` | 865 | 2 | Opcode-only in all retained samples. |
 | `02 36` | `0x3602` | 771 | 11 | Observed after successful RC4 decryption; semantics not assigned. |
 | `A1 FF` | `0xFFA1` | 255 | 20 | Not an outer LZ4 marker; compressed outer bodies require FF FF. |
 | `07 37` | `0x3707` | 245 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `03 37` | `0x3703` | 236 | 40 | Observed after successful RC4 decryption; semantics not assigned. |
 | `13 37` | `0x3713` | 214 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `17 90` | `0x9017` | 144 | 10 | The three retained plaintext samples were byte-identical. |
-| `33 38` | `0x3833` | 130 | 4, 6 | Observed after successful RC4 decryption; semantics not assigned. |
-| `30 38` | `0x3830` | 115 | 4, 6 | Observed after successful RC4 decryption; semantics not assigned. |
 | `0B 37` | `0x370B` | 114 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `02 37` | `0x3702` | 60 | 40, 41 | Observed after successful RC4 decryption; semantics not assigned. |
 | `51 36` | `0x3651` | 42 | 6 | Observed after successful RC4 decryption; semantics not assigned. |
@@ -321,7 +321,7 @@ The retained plaintext samples carry skill ID 15060150, independently catalogued
 
 ### `1D 38` — `CLIENT_LOCATION_SKILL_FOLLOWUP`
 
-A fixed 13-byte packet repeatedly follows 1A 38. Its u32 at offset 7 is 15060153, numerically adjacent to Hellfire skill ID 15060150. The exact stage and field semantics need a controlled Hellfire-only capture.
+A fixed 13-byte packet repeatedly follows 1A 38. Its u32 at offset 7 is skill variant 15060153, which is also enumerated by Aion2Flow's public skill-icon catalog and is numerically adjacent to Hellfire skill ID 15060150. The exact stage and field semantics need a controlled Hellfire-only capture.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
@@ -331,6 +331,42 @@ A fixed 13-byte packet repeatedly follows 1A 38. Its u32 at offset 7 is 15060153
 | 7 | `u32le` | `skill_variant_id` | inferred; 15060153 in retained samples |
 | 11 | `u8` | `stage_marker` | observed; 0x01 in retained samples |
 | 12 | `u8` | `entity_id_tag_or_mode` | unknown; 0x02 in retained samples |
+
+### `30 38` — `CLIENT_TARGET_REFERENCE_A`
+
+Carries either a zero entity reference or the same tagged variable-length entity value seen in nearby 33 38 packets. It frequently appears immediately before a skill request, but its exact distinction from 33 38 is open.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `u8` | `reference_flags` | observed; zero in retained samples |
+| 3 | `uvarint` | `target_entity_id` | inferred; zero represents no target |
+
+### `33 38` — `CLIENT_TARGET_REFERENCE_B`
+
+Carries the same zero-or-entity-reference shape as 30 38. Retained sequences show 33 38 preceding 30 38 with matching entity values, suggesting two target-state stages rather than unrelated payloads.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `u8` | `reference_flags` | observed; zero in retained samples |
+| 3 | `uvarint` | `target_entity_id` | inferred; zero represents no target |
+
+### `3A 38` — `CLIENT_ACTION_BOUNDARY_BEGIN`
+
+Opcode-only packet. The snapshot contains exactly 865 occurrences each of 3A 38 and 3C 38; retained sequences place 3A 38 before and 3C 38 after a skill request.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+
+### `3C 38` — `CLIENT_ACTION_BOUNDARY_END`
+
+Opcode-only packet paired by count and local ordering with 3A 38. Whether the pair means input press/release, request begin/end, or another action boundary requires a controlled hold-and-release capture.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
 
 ### `40 8D` — `CLIENT_ZLIB_BLOB`
 

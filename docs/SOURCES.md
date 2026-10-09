@@ -69,6 +69,17 @@ Its dispatcher intentionally handles server-to-client traffic only.
 - Limitation: some older documentation interprets the length byte as a packet
   delimiter; current evidence supports unsigned-varint framing instead
 
+### Aion2Flow
+
+- Repository: <https://github.com/cloris-chan/Aion2Flow>
+- License: GPL-3.0
+- Skill-icon catalog:
+  <https://github.com/cloris-chan/Aion2Flow/blob/main/src/Aion2Flow.Resources/Generated/SkillIconCatalog.g.cs>
+- Use: independent confirmation that observed derived skill identifiers such
+  as `15060153` are valid catalogued variants
+- Limitation: its live protocol parsers focus on inbound combat traffic and do
+  not provide a C2S plaintext decoder
+
 ### AionFlex
 
 The locally installed .NET application was inspected read-only. Its

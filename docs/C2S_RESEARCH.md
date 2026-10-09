@@ -390,9 +390,36 @@ action_mode:u8              # zero in retained samples
 ```
 
 A fixed 13-byte `1D 38` packet repeatedly follows this request. It contains
-`15060153` at offset 7, numerically adjacent to the Hellfire skill ID, but its
-exact follow-up stage remains a hypothesis until a controlled Hellfire-only
-capture separates button press, cast completion, impact, and cancellation.
+skill variant `15060153` at offset 7. Aion2Flow's public skill-icon catalog also
+enumerates this variant, and it is numerically adjacent to the Hellfire skill
+ID. Its exact follow-up stage remains a hypothesis until a controlled
+Hellfire-only capture separates button press, cast completion, impact, and
+cancellation.
+
+Two opcode-only packets form another repeatable skill-request boundary. The
+two-session snapshot contains exactly 865 instances each of `3A 38` and
+`3C 38`, and retained local sequences put them around a normal `00 38` request:
+
+```text
+3A 38 -> [30 38 target reference] -> 00 38 skill request -> 3C 38
+```
+
+The pair is provisionally named action-boundary begin/end. A controlled test
+that separates a quick click, a held key, and a cancelled cast is still needed
+to distinguish input press/release from protocol request begin/end.
+
+`30 38` and `33 38` both have a compact target-reference shape:
+
+```text
+30 38 or 33 38
+reference_flags:u8          # zero in retained samples
+target_entity_id:uvarint    # zero encodes no target
+```
+
+The varint accounts exactly for the observed four- and six-byte body lengths.
+Retained sequences show the same entity value moving from `33 38` to `30 38`,
+with `30 38` frequently appearing immediately before a skill request. Their
+precise two-stage distinction remains open.
 
 Dodge provides a second independently structured sequence. All retained
 `0E 37` packets use skill `15000100` or variant `15000101`; the public skill
