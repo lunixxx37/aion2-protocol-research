@@ -195,10 +195,17 @@
       "encryption": "rc4",
       "confidence": "inferred",
       "body_lengths": [158],
-      "notes": "First encrypted body in all four independently decoded sessions. It contains printable identification and encoded session fields; raw values are excluded.",
+      "notes": "First encrypted body in all four decoded sessions. The byte layout and Base64 token grammar are locally confirmed; identifier semantics and their launcher/login sources remain open. Raw values are excluded.",
       "fields": [
         {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
-        {"offset": 2, "type": "bytes[156]", "name": "session_setup_payload", "status": "unknown"}
+        {"offset": 2, "type": "uvarint", "name": "primary_identifier_length", "status": "confirmed; observed value 43"},
+        {"offset": "2+uvarint_width", "type": "ascii[primary_identifier_length]", "name": "primary_identifier", "status": "confirmed structure; meaning unknown"},
+        {"offset": "after primary_identifier", "type": "u8", "name": "primary_identifier_terminator", "status": "confirmed zero"},
+        {"offset": "after primary terminator", "type": "uvarint", "name": "encoded_token_length", "status": "confirmed; observed value 100"},
+        {"offset": "after encoded_token_length", "type": "base64-ascii[encoded_token_length]", "name": "encoded_token", "status": "confirmed; decodes to stable_identifier ':' connection_identifier NUL"},
+        {"offset": "after encoded_token", "type": "u8", "name": "encoded_token_terminator", "status": "confirmed zero"},
+        {"offset": "after token terminator", "type": "u8", "name": "setup_flags", "status": "confirmed bitfield: bit 0 is an unknown caller flag; bit 1 means optional_value > 0"},
+        {"offset": "after setup_flags", "type": "u64le", "name": "optional_value", "status": "confirmed builder input; application meaning unknown"}
       ]
     },
     {
@@ -208,9 +215,14 @@
       "name": "LOGIN_OR_SERVER_TRANSFER",
       "encryption": "clear",
       "confidence": "inferred",
-      "body_lengths": [],
-      "notes": "Public parser and local context suggest login or server transfer.",
-      "fields": []
+      "body_lengths": [4610],
+      "notes": "Public parser and local context suggest login or server transfer. In two local sessions this was the sole inner frame of the first S2C LZ4 bundle and echoed the C2S 13 36 primary identifier near its tail. The complete response arrived about 1.7 seconds after 13 36, so it is not the client's source for that value.",
+      "fields": [
+        {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
+        {"offset": "body_length-57", "type": "uvarint", "name": "echoed_primary_identifier_length", "status": "confirmed in two sessions; observed value 43"},
+        {"offset": "body_length-56", "type": "ascii[43]", "name": "echoed_primary_identifier", "status": "confirmed byte-equal to preceding C2S 13 36 value"},
+        {"offset": "body_length-13", "type": "bytes[13]", "name": "trailing_fields", "status": "stable structure in two sessions; semantics unknown"}
+      ]
     },
     {
       "wire": "1636",

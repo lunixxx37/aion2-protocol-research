@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Aion 2 world-handshake and C2S RC4 primitives.
+"""Aion 2 world-handshake, session-setup, and C2S RC4 primitives.
 
 The module contains no socket or account logic.  A caller owns one
 ``C2SStreamCipher`` per world TCP connection and must feed every post-handshake
@@ -9,11 +9,14 @@ C2S body to it exactly once and in wire order.
 from __future__ import annotations
 
 import argparse
+import base64
+import binascii
 from dataclasses import dataclass
 
 
 CLIENT_HANDSHAKE_OPCODE = b"\x10\x36"
 SERVER_HANDSHAKE_OPCODE = b"\x11\x36"
+CLIENT_SESSION_SETUP_OPCODE = b"\x13\x36"
 EXPECTED_SECRET_LENGTH = 214
 
 
@@ -111,6 +114,138 @@ class ServerHandshake:
     result: int
 
 
+@dataclass(frozen=True)
+class ClientSessionSetup:
+    """Decoded fields of the first encrypted ``13 36`` C2S body.
+
+    Identifier names describe their observed lifetime, not a confirmed account,
+    character, or device meaning.
+    """
+
+    primary_identifier: str
+    stable_identifier: str
+    connection_identifier: str
+    setup_flags: int
+    optional_value: int
+
+    @property
+    def flag0(self) -> bool:
+        """Return the still-unknown first flag used by the client builder."""
+        return bool(self.setup_flags & 0x01)
+
+    @property
+    def has_optional_value(self) -> bool:
+        """Return the builder's ``optional_value > 0`` flag."""
+        return bool(self.setup_flags & 0x02)
+
+
+def _ascii_bytes(value: str, field: str) -> bytes:
+    try:
+        encoded = value.encode("ascii")
+    except UnicodeEncodeError as error:
+        raise ValueError(f"{field} must contain only ASCII characters") from error
+    if b"\x00" in encoded:
+        raise ValueError(f"{field} must not contain a NUL byte")
+    return encoded
+
+
+def build_client_session_setup(
+    primary_identifier: str,
+    stable_identifier: str,
+    connection_identifier: str,
+    flag0: bool = False,
+    optional_value: int = 0,
+) -> bytes:
+    """Build a ``13 36`` body and derive its two-bit flags like the client."""
+    primary = _ascii_bytes(primary_identifier, "primary_identifier")
+    stable = _ascii_bytes(stable_identifier, "stable_identifier")
+    connection = _ascii_bytes(connection_identifier, "connection_identifier")
+    if b":" in stable or b":" in connection:
+        raise ValueError("stable and connection identifiers must not contain ':'")
+    if not isinstance(flag0, bool):
+        raise ValueError("flag0 must be a bool")
+    if not 0 <= optional_value <= 0x7FFFFFFFFFFFFFFF:
+        raise ValueError("optional_value must be a non-negative i64")
+
+    token = base64.b64encode(stable + b":" + connection + b"\x00")
+    setup_flags = int(flag0) | (int(optional_value > 0) << 1)
+    return b"".join(
+        (
+            CLIENT_SESSION_SETUP_OPCODE,
+            encode_uvarint(len(primary)),
+            primary,
+            b"\x00",
+            encode_uvarint(len(token)),
+            token,
+            b"\x00",
+            bytes((setup_flags,)),
+            optional_value.to_bytes(8, "little"),
+        )
+    )
+
+
+def _parse_terminated_ascii(
+    body: bytes,
+    offset: int,
+    field: str,
+) -> tuple[str, int]:
+    length, width = decode_uvarint(body, offset)
+    value_at = offset + width
+    terminator_at = value_at + length
+    if terminator_at >= len(body):
+        raise ValueError(f"{field} exceeds session setup body")
+    if body[terminator_at] != 0:
+        raise ValueError(f"{field} is not NUL-terminated")
+    try:
+        value = body[value_at:terminator_at].decode("ascii")
+    except UnicodeDecodeError as error:
+        raise ValueError(f"{field} is not ASCII") from error
+    return value, terminator_at + 1
+
+
+def parse_client_session_setup(body: bytes) -> ClientSessionSetup:
+    """Parse and strictly validate a plaintext ``13 36`` C2S body."""
+    if not body.startswith(CLIENT_SESSION_SETUP_OPCODE):
+        raise ValueError("client session setup opcode is not 13 36")
+
+    primary, offset = _parse_terminated_ascii(body, 2, "primary_identifier")
+    encoded_token, offset = _parse_terminated_ascii(body, offset, "encoded_token")
+    if len(body) - offset != 9:
+        raise ValueError("unexpected client session setup trailer length")
+
+    try:
+        encoded_bytes = encoded_token.encode("ascii")
+        decoded_token = base64.b64decode(encoded_bytes, validate=True)
+    except (UnicodeEncodeError, binascii.Error) as error:
+        raise ValueError("encoded_token is not valid Base64") from error
+    if base64.b64encode(decoded_token) != encoded_bytes:
+        raise ValueError("encoded_token does not use canonical Base64")
+    if not decoded_token.endswith(b"\x00"):
+        raise ValueError("decoded session token is not NUL-terminated")
+    identifiers = decoded_token[:-1].split(b":")
+    if len(identifiers) != 2:
+        raise ValueError("decoded session token does not contain two identifiers")
+    try:
+        stable, connection = (value.decode("ascii") for value in identifiers)
+    except UnicodeDecodeError as error:
+        raise ValueError("decoded session identifiers are not ASCII") from error
+
+    setup_flags = body[offset]
+    if setup_flags & ~0x03:
+        raise ValueError("client session setup contains unknown flag bits")
+    optional_value = int.from_bytes(body[offset + 1 : offset + 9], "little")
+    if bool(setup_flags & 0x02) != (optional_value > 0):
+        raise ValueError("optional-value flag does not match the trailer value")
+
+    return ClientSessionSetup(
+        primary_identifier=primary,
+        stable_identifier=stable,
+        connection_identifier=connection,
+        setup_flags=setup_flags,
+        optional_value=optional_value,
+    )
+
+
 def generate_client_key_and_handshake(
     revision: int,
     region: str = "DE",
@@ -195,6 +330,34 @@ def self_test() -> None:
     # Published RC4 test vector: Key / Plaintext -> BBF316E8D940AF0AD3.
     assert RC4(b"Key").crypt(b"Plaintext").hex() == "bbf316e8d940af0ad3"
 
+    setup = ClientSessionSetup(
+        primary_identifier="123456:11111111-1111-1111-1111-111111111111",
+        stable_identifier="22222222-2222-2222-2222-222222222222",
+        connection_identifier="33333333-3333-3333-3333-333333333333",
+        setup_flags=2,
+        optional_value=0x1122334455667788,
+    )
+    setup_body = build_client_session_setup(
+        setup.primary_identifier,
+        setup.stable_identifier,
+        setup.connection_identifier,
+        setup.flag0,
+        setup.optional_value,
+    )
+    assert len(setup_body) == 158
+    assert parse_client_session_setup(setup_body) == setup
+    assert not setup.flag0 and setup.has_optional_value
+
+    flag0_body = build_client_session_setup(
+        setup.primary_identifier,
+        setup.stable_identifier,
+        setup.connection_identifier,
+        flag0=True,
+    )
+    flag0_setup = parse_client_session_setup(flag0_body)
+    assert flag0_setup.setup_flags == 1
+    assert flag0_setup.flag0 and not flag0_setup.has_optional_value
+
     private_key, client_frame = generate_client_key_and_handshake(3527, "DE")
     encoded_length, width = decode_uvarint(client_frame)
     assert encoded_length - 4 == len(client_frame) - width
@@ -229,7 +392,11 @@ def self_test() -> None:
 
     sender = C2SStreamCipher(secret)
     receiver = C2SStreamCipher(secret)
-    bodies = [b"\x13\x36setup", b"\x01\x36" + (123456789).to_bytes(8, "little"), b"\x10\x56"]
+    bodies = [
+        setup_body,
+        b"\x01\x36" + (123456789).to_bytes(8, "little"),
+        b"\x10\x56",
+    ]
     for body in bodies:
         framed = sender.encode_frame(body)
         length, prefix_width = decode_uvarint(framed)

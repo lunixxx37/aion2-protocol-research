@@ -25,6 +25,7 @@ or the operators of Aion 2.
 | RSA padding and handshake plaintext | OAEP-SHA1, exactly 214 bytes |
 | symmetric C2S encryption | **standard RC4, fully reconstructed** |
 | offline C2S PCAP decryption | reproduced across independent sessions |
+| first encrypted `13 36` packet | byte layout and codec reconstructed; value sources open |
 | C2S opcode semantics | visible; most payload meanings still being mapped |
 
 The client generates an ephemeral 2048-bit RSA key with public exponent `3`
@@ -62,7 +63,8 @@ python tools/aion2_client_crypto.py --self-test
 ```
 
 The self-test covers a published RC4 vector, RSA-2048/e=3, PKCS#1 public-key
-DER, OAEP-SHA1, the `10 36`/`11 36` layouts, and continuous multi-frame RC4.
+DER, OAEP-SHA1, the `10 36`/`11 36` layouts, the `13 36` session-setup codec,
+and continuous multi-frame RC4.
 
 ## Standalone-client primitives
 
@@ -73,6 +75,7 @@ connection-specific cryptographic layer:
 - `10 36` public-key handshake serialization;
 - `11 36` server-handshake parsing;
 - OAEP-SHA1 recovery of the 214-byte session secret;
+- `13 36` session-setup parsing and serialization;
 - continuous body-only RC4 framing for outgoing C2S packets;
 - strict unsigned-varint framing helpers.
 
@@ -85,8 +88,9 @@ process-memory recovery tools. Those tools exist to analyze captures produced
 by the original client.
 
 The remaining major layers for a complete client are launcher/login session
-handoff, lobby state and redirect handling, the required fields of the first
-encrypted `13 36` packet, and semantic codecs for gameplay packets.
+handoff, lobby state and redirect handling, determining the authenticated
+source of the structured `13 36` values, and semantic codecs for gameplay
+packets.
 
 ## Offline capture workflow
 

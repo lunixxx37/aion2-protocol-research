@@ -254,6 +254,49 @@ recovery:
 Every C2S body on a TCP connection must advance the same RC4 state exactly
 once and in order. A reconnect creates a fresh RSA pair and fresh RC4 state.
 
+### 5.6 First encrypted client packet
+
+The first RC4-encrypted C2S body in all four decoded world sessions is `13 36`.
+Its confirmed byte grammar is:
+
+```text
+13 36
+primary_length:uvarint
+primary_identifier:ascii[primary_length]
+00
+token_length:uvarint
+encoded_token:base64-ascii[token_length]
+00
+setup_flags:u8
+optional_value:u64le
+```
+
+Observed bodies are 158 bytes: `primary_length` is 43 and `token_length` is
+100. Decoding `encoded_token` yields:
+
+```text
+stable_identifier ':' connection_identifier 00
+```
+
+Both components were 36-character UUID strings. `stable_identifier` remained
+constant across the four samples, and `connection_identifier` changed in every
+session. These are descriptive names based on variation, not confirmed
+application semantics. The captured values are not part of this repository.
+
+Runtime disassembly confirms that `setup_flags` is a packed two-boolean field.
+Bit 0 comes directly from an as-yet unnamed caller argument. Bit 1 is set when
+the builder's 64-bit `optional_value` argument is positive. The four observed
+packets contained either flags `2` with a nonzero value or flags `0` with zero.
+
+The codec is implemented as `build_client_session_setup` and
+`parse_client_session_setup` in `tools/aion2_client_crypto.py`. A standalone
+client still needs the authenticated upstream source for accepted values.
+
+In two complete startup captures, S2C `15 36` later echoed
+`primary_identifier` byte-for-byte near the end of its 4,610-byte body. The
+complete response arrived about 1.7 seconds after the client had sent `13 36`,
+so it confirms the value but cannot supply it for the first client packet.
+
 ## 6. Lobby
 
 Public decoders identify at least:
@@ -304,7 +347,7 @@ A robust decoder should:
 
 - Semantic layouts for most now-visible C2S opcodes.
 - Mapping controlled player actions to exact C2S messages.
-- Required fields of the first encrypted `13 36` packet.
+- Authenticated source and application meaning of the structured `13 36` values.
 - Meaning and schema of decompressed `40 8D` content.
 - Launcher/login token format and lobby handoff.
 - Minimum packets for keepalive, character selection, and world join.

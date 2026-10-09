@@ -55,7 +55,7 @@ Snapshot date: `2026-10-09`; client revisions:
 | `10 56` | `0x5610` | world | C2S | `CLIENT_STARTUP_SIGNAL` | 4 | 2 | observed |
 | `11 36` | `0x3611` | world | S2C | `SERVER_RSA_HANDSHAKE` | — | 278 | locally-confirmed |
 | `13 36` | `0x3613` | world | C2S | `CLIENT_SESSION_SETUP` | 4 | 158 | inferred |
-| `15 36` | `0x3615` | world | S2C | `LOGIN_OR_SERVER_TRANSFER` | — | — | inferred |
+| `15 36` | `0x3615` | world | S2C | `LOGIN_OR_SERVER_TRANSFER` | — | 4610 | inferred |
 | `16 36` | `0x3616` | world | S2C | `GAME_SERVER_INFO` | — | — | inferred |
 | `18 37` | `0x3718` | world | C2S | `CLIENT_ACTION_POSITION` | 369 | 28 | inferred |
 | `1A 36` | `0x361A` | world | S2C | `NAME_CHECK` | — | — | parser-based |
@@ -327,12 +327,30 @@ The 256-byte block decrypts as RSA-OAEP-SHA1 and yields the complete 214-byte RC
 
 ### `13 36` — `CLIENT_SESSION_SETUP`
 
-First encrypted body in all four independently decoded sessions. It contains printable identification and encoded session fields; raw values are excluded.
+First encrypted body in all four decoded sessions. The byte layout and Base64 token grammar are locally confirmed; identifier semantics and their launcher/login sources remain open. Raw values are excluded.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
 | 0 | `bytes[2]` | `opcode` | confirmed |
-| 2 | `bytes[156]` | `session_setup_payload` | unknown |
+| 2 | `uvarint` | `primary_identifier_length` | confirmed; observed value 43 |
+| 2+uvarint_width | `ascii[primary_identifier_length]` | `primary_identifier` | confirmed structure; meaning unknown |
+| after primary_identifier | `u8` | `primary_identifier_terminator` | confirmed zero |
+| after primary terminator | `uvarint` | `encoded_token_length` | confirmed; observed value 100 |
+| after encoded_token_length | `base64-ascii[encoded_token_length]` | `encoded_token` | confirmed; decodes to stable_identifier ':' connection_identifier NUL |
+| after encoded_token | `u8` | `encoded_token_terminator` | confirmed zero |
+| after token terminator | `u8` | `setup_flags` | confirmed bitfield: bit 0 is an unknown caller flag; bit 1 means optional_value > 0 |
+| after setup_flags | `u64le` | `optional_value` | confirmed builder input; application meaning unknown |
+
+### `15 36` — `LOGIN_OR_SERVER_TRANSFER`
+
+Public parser and local context suggest login or server transfer. In two local sessions this was the sole inner frame of the first S2C LZ4 bundle and echoed the C2S 13 36 primary identifier near its tail. The complete response arrived about 1.7 seconds after 13 36, so it is not the client's source for that value.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| body_length-57 | `uvarint` | `echoed_primary_identifier_length` | confirmed in two sessions; observed value 43 |
+| body_length-56 | `ascii[43]` | `echoed_primary_identifier` | confirmed byte-equal to preceding C2S 13 36 value |
+| body_length-13 | `bytes[13]` | `trailing_fields` | stable structure in two sessions; semantics unknown |
 
 ### `18 37` — `CLIENT_ACTION_POSITION`
 

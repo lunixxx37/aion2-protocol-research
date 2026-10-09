@@ -284,7 +284,7 @@ construction.
 
 ### 5.1 Startup sequence
 
-Both investigated world sessions begin with the same packet pattern:
+All four decoded world sessions begin with the same packet pattern:
 
 ```text
 13 36 || session/setup payload    # first RC4 body, observed length 158
@@ -294,8 +294,70 @@ Both investigated world sessions begin with the same packet pattern:
 ...
 ```
 
-The first `13 36` payload includes printable identification fields and encoded
-session material. Raw values are deliberately excluded from the repository.
+All four decoded `13 36` bodies have the same 158-byte layout:
+
+```text
+13 36
+primary_length:uvarint                    # observed 43
+primary_identifier:ascii[primary_length]  # decimal text ':' 36-character UUID
+00
+token_length:uvarint                      # observed 100
+encoded_token:base64-ascii[token_length]
+00
+setup_flags:u8                            # observed 0 or 2
+optional_value:u64le                      # zero in both flags-0 samples
+```
+
+The 100 Base64 characters decode canonically to 74 bytes:
+
+```text
+stable_identifier ':' connection_identifier 00
+```
+
+Both decoded identifiers are 36-character UUID strings. The first remained
+constant across all four samples, while the second changed in every world
+session. The UUID within `primary_identifier` had an intermediate lifetime: it
+was shared by the first two samples and changed in the later captures. These
+variation-based names are intentionally neutral; none establishes whether a
+field identifies an account, installation, process, character, or login token.
+
+The stable component also has an exact historical match as the `guid_` field
+of a Purple NCCR sidecar under
+`%LOCALAPPDATA%\NCSOFT\NccrData\com.ncsoft.nccr.purpleonp.live\` and in
+Purple's blob cache. This ties the value to launcher-managed state, although it
+does not yet prove which live handoff supplies it to Aion 2. Neither the
+primary UUID nor the per-connection UUID was present in the examined client
+files or process command line.
+
+Revision-3527 runtime disassembly locates the client builder at module offset
+`AION2.exe+0x9001BA0`. It copies the already formatted primary string from a
+global client-state object and the 100-character Base64 string from a session
+object at field offset `0x15C0`; it does not create either identifier while
+sending. A handler at `AION2.exe+0x9509C50` populates the latter field by
+copying a string at offset `0x58` from an incoming response object. The exact
+upstream transport and response type remain to be named.
+
+The builder stores one caller-provided boolean and one `optional_value > 0`
+boolean; the packet serializer packs them into bits 0 and 1 of `setup_flags`.
+It then writes the 64-bit value. This explains the two captured forms: flags
+`2` plus a nonzero value in two samples, and flags `0` plus zero in two samples.
+Eight direct builder call sites were found; they supply combinations including
+zero, a state-owned 64-bit value, and the independent bit-0 flag. The value's
+application meaning remains open.
+
+S2C `15 36` contains a byte-exact copy of `primary_identifier` near the end of
+its 4,610-byte inner body in two startup captures. That complete response was
+available roughly 1.7 seconds after the corresponding C2S `13 36`, so it is a
+confirmation or echo rather than the source used to construct the first
+client packet.
+
+Raw captured identifiers and values are deliberately excluded from the
+repository.
+
+`tools/aion2_client_crypto.py` now parses and serializes this exact grammar.
+That completes the packet's byte codec, but a standalone client must still
+obtain fresh, accepted field values from the authenticated launcher/login and
+lobby handoff.
 
 ### 5.2 Opcode observations
 

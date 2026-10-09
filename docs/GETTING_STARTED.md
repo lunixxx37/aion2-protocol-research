@@ -19,8 +19,8 @@ python tools/aion2_client_crypto.py --self-test
 ```
 
 The self-test verifies a published RC4 vector, RSA-2048/e=3, PKCS#1 public-key
-DER, OAEP-SHA1, the `10 36`/`11 36` layouts, and continuous RC4 state across
-multiple bodies.
+DER, OAEP-SHA1, the `10 36`/`11 36` layouts, the observed `13 36` session-setup
+codec, and continuous RC4 state across multiple bodies.
 
 ## 2. Available building blocks
 
@@ -31,6 +31,10 @@ multiple bodies.
 - `parse_server_handshake(body)`: parses a clear `11 36` body.
 - `decrypt_server_secret(private_key, handshake)`: recovers the exact 214-byte
   RC4 key through OAEP-SHA1.
+- `build_client_session_setup(...)`: serializes the plaintext body of the first
+  encrypted `13 36` packet.
+- `parse_client_session_setup(body)`: strictly parses its two text fields,
+  decoded Base64 token, packed flags, and 64-bit trailer.
 - `C2SStreamCipher(secret)`: continuously encrypts C2S bodies and adds the outer
   unsigned-varint prefix.
 - `encode_uvarint`, `decode_uvarint`, and `frame_clear_body`: basic Aion framing
@@ -41,6 +45,7 @@ Minimal cryptographic flow:
 ```python
 from tools.aion2_client_crypto import (
     C2SStreamCipher,
+    build_client_session_setup,
     decrypt_server_secret,
     generate_client_key_and_handshake,
     parse_server_handshake,
@@ -54,6 +59,18 @@ private_key, client_10_36 = generate_client_key_and_handshake(3527, "DE")
 server_handshake = parse_server_handshake(server_11_36_body)
 secret = decrypt_server_secret(private_key, server_handshake)
 c2s = C2SStreamCipher(secret)
+
+# These authenticated handoff values must come from the launcher/login and
+# lobby flow. Their byte layout is known; their source semantics remain open.
+setup_body = build_client_session_setup(
+    primary_identifier=PRIMARY_IDENTIFIER,
+    stable_identifier=STABLE_IDENTIFIER,
+    connection_identifier=CONNECTION_IDENTIFIER,
+    flag0=FLAG0,
+    optional_value=OPTIONAL_VALUE,
+)
+setup_packet = c2s.encode_frame(setup_body)
+# Send setup_packet first.
 
 wire_packet = c2s.encode_frame(b"\x01\x36" + unix_ms.to_bytes(8, "little"))
 # Send wire_packet in full. Reuse this exact c2s instance for every later body
@@ -136,7 +153,7 @@ A complete client still needs:
 
 1. Launcher/login session handling and transfer of required values to lobby.
 2. Lobby parsing, including the `0F 39` world redirect.
-3. Required fields of the first encrypted `13 36` session packet.
+3. Provenance and application meaning of the now-structured `13 36` values.
 4. Complete semantic codecs beyond the partial movement and skill-request
    layouts now recorded for C2S families `37` and `38`.
 5. Buffered S2C processing, including nested LZ4 bundles.
