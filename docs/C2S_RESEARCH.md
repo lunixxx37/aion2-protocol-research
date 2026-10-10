@@ -490,9 +490,10 @@ It produced this complete 877 ms non-time sequence:
       -> 03 37 -> 03 37 -> 03 37 -> 18 37
 ```
 
-`02 37` is the jump-transition form. The 40-byte takeoff packet carried
-vertical velocity `+1000`, while the 41-byte form appeared 444 ms later near
-the apex with vertical velocity `-32.096` and one additional marker byte:
+`02 37` is an airborne-transition form used by jumping. The 40-byte takeoff
+packet carried vertical velocity `+1000`, while the 41-byte form appeared 444
+ms later near the apex with vertical velocity `-32.096` and one additional
+marker byte:
 
 ```text
 02 37
@@ -505,7 +506,7 @@ movement_mode:u8
 client_unix_ms:u64le
 ```
 
-`03 37` supplied six 40-byte air-movement samples at approximately 10 Hz:
+`03 37` supplied six 40-byte airborne-movement samples at approximately 10 Hz:
 
 ```text
 03 37
@@ -520,9 +521,28 @@ client_unix_ms:u64le
 X/Y and heading stayed fixed. Position Z rose from the original ground value
 through the apex and fell again, while velocity Z progressed from `+739.115`
 through positive, near-zero, and negative values to `-797.065`. The final
-`18 37` restored the exact original ground position. This establishes `02 37`
-as jump transitions and `03 37` as jump movement rather than generic movement
-variants.
+`18 37` restored the exact original ground position.
+
+A later live-viewer session isolated four additional user-labelled actions:
+
+```text
+Dodge:          00 38 -> 0E 37 -> 0F 37 x3 -> 18 37       (394 ms)
+deploy wings:   0A 37 -> 0B 37 x3 -> 0A 37 -> 18 37       (402 ms)
+fly up/down:    0A 37 -> 0B 37 x38 -> 18 37             (3,898 ms)
+fold wings:     02 37 -> 03 37 x4 -> 18 37                (465 ms)
+```
+
+The deliberate vertical-flight run establishes `0A 37` as the flight
+transition and `0B 37` as continuous flight movement. The manual wing-exit
+action reuses `02 37` / `03 37`, so those two opcodes describe a broader
+airborne or falling state rather than jumping exclusively. Its 41-byte `02 37`
+transition used flags `11` and marker `04`; the jump-apex form used the same
+flags with marker `02`.
+
+An `A1 FF` packet occurred inside the wing-deployment window, but it was not
+part of that action. The complete timeline places `A1 FF` at an approximately
+30-second cadence before, during, and after the test. Its 20- and 21-byte forms
+are periodic state or telemetry packets whose field semantics remain open.
 
 `18 37` is an action-position snapshot:
 
@@ -674,9 +694,10 @@ event-period run contributed another two `0A 37` transitions and 20 `0B 37`
 updates. The capture also contained one `10 37` boundary paired with four
 `11 37` updates and one timestamp-free `19 37` packet immediately before the
 first `0A 37` / `0B 37` run. Their position, vector, heading, mode, and client
-timestamp fields are now recorded in `opcodes.json`. Auto-navigation, riding,
-ordinary movement, and Dodge overlapped in the user-observed order, so the
-application-level meanings remain deliberately neutral pending isolated tests.
+timestamp fields are now recorded in `opcodes.json`. The original capture mixed
+auto-navigation, riding, ordinary movement, and Dodge, so the application
+meanings were initially left neutral. The later isolated live-viewer actions
+identify `0A 37` / `0B 37` as flight; the other families remain unnamed.
 
 ### 5.5 Offline command
 
@@ -866,6 +887,11 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
 - Added a live C2S opcode viewer that keeps keys in memory, hides regular time
   packets by default, and records user-labeled action markers beside decrypted
   packets in an ignored local JSONL timeline.
+- Isolated Dodge, wing deployment, deliberate vertical flight, and manual wing
+  exit in the live viewer. This confirmed `0A 37` / `0B 37` as the flight
+  transition/update pair, broadened `02 37` / `03 37` to the airborne/falling
+  family, and showed that the interleaved `A1 FF` packet was periodic rather
+  than wing-triggered.
 
 ### October 9, 2026
 

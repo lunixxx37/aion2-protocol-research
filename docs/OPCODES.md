@@ -36,11 +36,11 @@ Snapshot date: `2026-10-10`; client revisions:
 | `01 61` | `0x6101` | world | S2C | `DUNGEON_RESULT` | — | — | parser-based |
 | `01 91` | `0x9101` | world | S2C | `NPC_BROADCAST` | — | — | parser-based |
 | `02 36` | `0x3602` | world | C2S | `CLIENT_PERIODIC_TELEMETRY` | 858 | 11 | hypothesis |
-| `02 37` | `0x3702` | world | C2S | `CLIENT_JUMP_TRANSITION` | 103 | 40, 41 | inferred |
+| `02 37` | `0x3702` | world | C2S | `CLIENT_AIRBORNE_TRANSITION` | 103 | 40, 41 | locally-confirmed |
 | `02 38` | `0x3802` | world | S2C | `ACTION_OR_CAST` | — | — | parser-based |
 | `02 97` | `0x9702` | world | S2C | `PARTY_STATE` | — | — | parser-based |
 | `03 36` | `0x3603` | world | S2C | `WORLD_PING` | — | — | parser-based |
-| `03 37` | `0x3703` | world | C2S | `CLIENT_JUMP_MOVEMENT` | 384 | 40 | inferred |
+| `03 37` | `0x3703` | world | C2S | `CLIENT_AIRBORNE_MOVEMENT` | 384 | 40 | locally-confirmed |
 | `03 38` | `0x3803` | world | S2C | `NPC_POSITION` | — | — | parser-based |
 | `04 37` | `0x3704` | world | C2S | `CLIENT_TIMESTAMP_MARKER_04` | 35 | 10 | inferred |
 | `04 38` | `0x3804` | world | S2C | `DIRECT_DAMAGE` | — | — | publicly-confirmed |
@@ -50,13 +50,13 @@ Snapshot date: `2026-10-10`; client revisions:
 | `05 E0` | `0xE005` | world | S2C | `GROGGY_OR_GUARD` | — | — | parser-based |
 | `06 38` | `0x3806` | world | S2C | `CAST_END_OR_DEFENSE` | — | — | parser-based |
 | `09 38` | `0x3809` | world | S2C | `SKILL_CAST` | — | — | parser-based |
-| `0A 37` | `0x370A` | world | C2S | `CLIENT_SPECIAL_MOVEMENT_0A_TRANSITION` | 14 | 40, 41 | inferred |
-| `0B 37` | `0x370B` | world | C2S | `CLIENT_SPECIAL_MOVEMENT_0B_UPDATE` | 260 | 39 | inferred |
+| `0A 37` | `0x370A` | world | C2S | `CLIENT_FLIGHT_TRANSITION` | 14 | 40, 41 | locally-confirmed |
+| `0B 37` | `0x370B` | world | C2S | `CLIENT_FLIGHT_MOVEMENT` | 260 | 39 | locally-confirmed |
 | `0C 37` | `0x370C` | world | C2S | `CLIENT_SPECIAL_MOVEMENT_0C_TRANSITION` | 3 | 67 | inferred |
 | `0D 37` | `0x370D` | world | C2S | `CLIENT_SPECIAL_MOVEMENT_0D_UPDATE` | 16 | 29 | inferred |
-| `0E 37` | `0x370E` | world | C2S | `CLIENT_DODGE_REQUEST` | 120 | 61 | inferred |
+| `0E 37` | `0x370E` | world | C2S | `CLIENT_DODGE_REQUEST` | 120 | 61 | locally-confirmed |
 | `0E 38` | `0x380E` | world | S2C | `TARGET_SELECTED` | — | — | parser-based |
-| `0F 37` | `0x370F` | world | C2S | `CLIENT_DODGE_MOVEMENT` | 239 | 39, 40 | inferred |
+| `0F 37` | `0x370F` | world | C2S | `CLIENT_DODGE_MOVEMENT` | 239 | 39, 40 | locally-confirmed |
 | `10 36` | `0x3610` | world | C2S | `CLIENT_RSA_HANDSHAKE` | — | 283 | locally-confirmed |
 | `10 37` | `0x3710` | world | C2S | `CLIENT_SPECIAL_MOVEMENT_10_BOUNDARY` | 8 | 29 | observed |
 | `10 56` | `0x5610` | world | C2S | `CLIENT_STARTUP_SIGNAL` | 6 | 2 | observed |
@@ -101,7 +101,7 @@ Snapshot date: `2026-10-10`; client revisions:
 
 | Wire | LE value | Frames | Sampled body lengths | Notes |
 |---|---|---|---|---|
-| `A1 FF` | `0xFFA1` | 282 | 20, 21 | Not an outer LZ4 marker; compressed outer bodies require FF FF. |
+| `A1 FF` | `0xFFA1` | 282 | 20, 21 | Not an outer LZ4 marker; compressed outer bodies require FF FF. A separate live validation showed an approximately 30-second cadence across both lengths. One sample merely coincided with wing deployment, while the cadence continued unchanged before and after the action. |
 | `07 37` | `0x3707` | 245 | — | Absent from the fifth controlled session covering ordinary movement, jump, target selection, one location-targeted skill, and Dodge. |
 | `13 37` | `0x3713` | 214 | — | Absent from the fifth controlled session covering ordinary movement, jump, target selection, one location-targeted skill, and Dodge. |
 | `17 90` | `0x9017` | 144 | 10 | The three retained plaintext samples were byte-identical. |
@@ -234,24 +234,24 @@ The first three consecutive retained samples increase the u64 value by exactly 1
 | 2 | `u64le` | `monotonic_time_ms` | inferred; exact +10000 steps in consecutive retained samples |
 | 10 | `u8` | `telemetry_value` | unknown; variable in retained samples |
 
-### `02 37` — `CLIENT_JUMP_TRANSITION`
+### `02 37` — `CLIENT_AIRBORNE_TRANSITION`
 
-An isolated stationary jump emitted two 02 37 transitions: a 40-byte takeoff form with +1000 vertical velocity and a 41-byte near-apex form with an additional marker. Six 03 37 air-movement samples occurred between and after them.
+An isolated stationary jump emitted a 40-byte takeoff form with +1000 vertical velocity and a 41-byte near-apex form, with six 03 37 updates between and after them. A separate live action in which the user manually folded the wings emitted a 41-byte transition followed by four 03 37 updates. The family therefore represents general airborne transitions rather than jumping alone.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
 | 0 | `bytes[2]` | `opcode` | confirmed |
-| 2 | `u8` | `transition_flags` | observed; 0x14 at takeoff and 0x11 near the apex in the controlled jump |
-| 3 | `u8` | `optional_marker` | present as 0x02 in the 41-byte flags-0x11 form |
+| 2 | `u8` | `transition_flags` | observed; 0x14 at jump takeoff and 0x11 near the jump apex or on manual wing exit |
+| 3 | `u8` | `optional_marker` | present in 41-byte flags-0x11 forms; 0x02 near the jump apex and 0x04 on manual wing exit |
 | after optional_marker if present | `f32le[3]` | `position_xyz` | confirmed |
 | after position_xyz | `f32le` | `heading_degrees` | inferred |
 | after heading_degrees | `f32le[3]` | `velocity_xyz` | inferred; Z follows the controlled jump arc |
 | body_end-9 | `u8` | `movement_mode` | observed; 0x03 at takeoff and 0x01 near the apex |
 | body_end-8 | `u64le` | `client_unix_ms` | confirmed |
 
-### `03 37` — `CLIENT_JUMP_MOVEMENT`
+### `03 37` — `CLIENT_AIRBORNE_MOVEMENT`
 
-Six 03 37 samples at approximately 10 Hz described the rising and falling phases of one isolated stationary jump. X/Y and heading remained fixed while position Z and velocity Z traced the jump arc.
+Six samples at approximately 10 Hz described the rising and falling phases of one isolated stationary jump. A separately isolated manual wing exit produced four more samples before the final action-position snapshot. This is an airborne or falling movement stream shared by jumping and flight exit.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
@@ -281,9 +281,9 @@ Timestamp-only family-37 marker observed near movement and skill transitions. It
 | 0 | `bytes[2]` | `opcode` | confirmed |
 | 2 | `u64le` | `client_unix_ms` | confirmed in every retained plaintext sample |
 
-### `0A 37` — `CLIENT_SPECIAL_MOVEMENT_0A_TRANSITION`
+### `0A 37` — `CLIENT_FLIGHT_TRANSITION`
 
-The special-movement capture retained four transition packets across two contiguous 0B 37 movement runs. The 41-byte flags-0x03 form adds marker 0x03 immediately before movement_mode; the 40-byte flags-0x02 form omits it. The exact in-game movement mode remains open.
+A controlled live wing-deployment action emitted a 41-byte transition, three 0B 37 updates, a 40-byte transition, and an 18 37 snapshot. A separate deliberate up/down flight began with the 40-byte form and continued through 38 0B 37 samples. The 41-byte flags-0x03 form adds marker 0x03 immediately before movement_mode; the 40-byte flags-0x02 form omits it.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
@@ -296,9 +296,9 @@ The special-movement capture retained four transition packets across two contigu
 | body_end-9 | `u8` | `movement_mode` | observed; 0x01 in retained samples |
 | body_end-8 | `u64le` | `client_unix_ms` | confirmed |
 
-### `0B 37` — `CLIENT_SPECIAL_MOVEMENT_0B_UPDATE`
+### `0B 37` — `CLIENT_FLIGHT_MOVEMENT`
 
-High-rate movement stream associated with 0A 37 transitions. Two runs in the special-movement capture lasted approximately 2.1 and 13.7 seconds and showed continuous position, large movement vectors, heading, mode, and client time. The exact in-game movement mode remains open.
+High-rate flight movement stream associated with 0A 37 transitions. A deliberately isolated up/down flight produced 38 samples over approximately 3.9 seconds, confirming the application meaning. Earlier runs lasted approximately 2.1 and 13.7 seconds and showed the same continuous position, movement-vector, heading, mode, and client-time layout.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
@@ -342,7 +342,7 @@ Ten position updates in the special-movement capture occurred between two 0C 37 
 
 ### `0E 37` — `CLIENT_DODGE_REQUEST`
 
-Every retained packet carries skill 15000100 or its 15000101 variant; 15000100 is independently catalogued as Dodge. These packets begin a short run of 0F 37 movement samples; separate controlled captures produced two and three samples respectively.
+Every retained packet carries skill 15000100 or its 15000101 variant; 15000100 is independently catalogued as Dodge. Multiple controlled actions reproduced the request immediately before a short 0F 37 movement run; the latest isolated action produced three movement samples.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
@@ -360,7 +360,7 @@ Every retained packet carries skill 15000100 or its 15000101 variant; 15000100 i
 
 ### `0F 37` — `CLIENT_DODGE_MOVEMENT`
 
-Movement samples following 0E 37 Dodge requests. Separate controlled captures produced two and three samples per request. The 40-byte form has an additional movement-mode byte immediately before the timestamp.
+Movement samples immediately following 0E 37 Dodge requests in multiple controlled captures. Separate actions produced two or three samples per request. The 40-byte form has an additional movement-mode byte immediately before the timestamp.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
