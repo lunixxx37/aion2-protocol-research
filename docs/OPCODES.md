@@ -60,10 +60,10 @@ Snapshot date: `2026-10-10`; client revisions:
 | `0E 38` | `0x380E` | world | S2C | `TARGET_SELECTED` | — | — | parser-based |
 | `0F 37` | `0x370F` | world | C2S | `CLIENT_DODGE_MOVEMENT` | 239 | 39, 40 | locally-confirmed |
 | `10 36` | `0x3610` | world | C2S | `CLIENT_RSA_HANDSHAKE` | — | 283 | locally-confirmed |
-| `10 37` | `0x3710` | world | C2S | `CLIENT_SPECIAL_MOVEMENT_10_BOUNDARY` | 8 | 29 | observed |
+| `10 37` | `0x3710` | world | C2S | `CLIENT_LANDING_BOUNDARY` | 8 | 29 | inferred |
 | `10 56` | `0x5610` | world | C2S | `CLIENT_STARTUP_SIGNAL` | 6 | 2 | observed |
 | `11 36` | `0x3611` | world | S2C | `SERVER_RSA_HANDSHAKE` | — | 278 | locally-confirmed |
-| `11 37` | `0x3711` | world | C2S | `CLIENT_SPECIAL_MOVEMENT_11_UPDATE` | 32 | 29 | observed |
+| `11 37` | `0x3711` | world | C2S | `CLIENT_LANDING_MOVEMENT` | 32 | 29 | inferred |
 | `13 36` | `0x3613` | world | C2S | `CLIENT_SESSION_SETUP` | 6 | 158 | inferred |
 | `15 36` | `0x3615` | world | S2C | `LOGIN_OR_SERVER_TRANSFER` | — | 4610 | inferred |
 | `16 36` | `0x3616` | world | S2C | `GAME_SERVER_INFO` | — | — | inferred |
@@ -245,22 +245,22 @@ The first three consecutive retained samples increase the u64 value by exactly 1
 
 ### `02 37` — `CLIENT_AIRBORNE_TRANSITION`
 
-An isolated stationary jump emitted a 40-byte takeoff form with +1000 vertical velocity and a 41-byte near-apex form, with six 03 37 updates between and after them. A separate live action in which the user manually folded the wings emitted a 41-byte transition followed by four 03 37 updates. The family therefore represents general airborne transitions rather than jumping alone.
+An isolated stationary jump emitted a 40-byte takeoff form with +1000 vertical velocity and a 41-byte near-apex form. Separate controlled actions used the 41-byte form for flight descent and manual wing exit. The marker distinguishes the observed transitions: 0x02 near the jump apex, 0x03 at the start of controlled descent, and 0x04 on manual wing exit.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
 | 0 | `bytes[2]` | `opcode` | confirmed |
 | 2 | `u8` | `transition_flags` | observed; 0x14 at jump takeoff and 0x11 near the jump apex or on manual wing exit |
-| 3 | `u8` | `optional_marker` | present in 41-byte flags-0x11 forms; 0x02 near the jump apex and 0x04 on manual wing exit |
+| 3 | `u8` | `optional_marker` | present in 41-byte flags-0x11 forms; 0x02 near the jump apex, 0x03 at controlled flight descent, and 0x04 on manual wing exit |
 | after optional_marker if present | `f32le[3]` | `position_xyz` | confirmed |
 | after position_xyz | `f32le` | `heading_degrees` | inferred |
-| after heading_degrees | `f32le[3]` | `velocity_xyz` | inferred; Z follows the controlled jump arc |
+| after heading_degrees | `f32le[3]` | `velocity_xyz` | confirmed by controlled jump and descent trajectories |
 | body_end-9 | `u8` | `movement_mode` | observed; 0x03 at takeoff and 0x01 near the apex |
 | body_end-8 | `u64le` | `client_unix_ms` | confirmed |
 
 ### `03 37` — `CLIENT_AIRBORNE_MOVEMENT`
 
-Six samples at approximately 10 Hz described the rising and falling phases of one isolated stationary jump. A separately isolated manual wing exit produced four more samples before the final action-position snapshot. This is an airborne or falling movement stream shared by jumping and flight exit.
+Six samples at approximately 10 Hz described an isolated stationary jump, and a manual wing exit produced four more. A controlled flight-descent action added 13 samples whose Z velocity progressed from approximately -305 to -2744 while position Z fell by 2456 units. This is the airborne or falling movement stream shared by jumping, flight descent, and wing exit.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
@@ -268,7 +268,7 @@ Six samples at approximately 10 Hz described the rising and falling phases of on
 | 2 | `u8` | `movement_flags` | observed; 0x02 in the controlled jump |
 | 3 | `f32le[3]` | `position_xyz` | confirmed |
 | 15 | `f32le` | `heading_degrees` | inferred |
-| 19 | `f32le[3]` | `velocity_xyz` | inferred; Z follows the controlled jump arc |
+| 19 | `f32le[3]` | `velocity_xyz` | confirmed by controlled jump and flight-descent trajectories |
 | 31 | `u8` | `movement_mode` | observed; 0x01 in the controlled jump |
 | 32 | `u64le` | `client_unix_ms` | confirmed |
 
@@ -292,14 +292,14 @@ Timestamp-only family-37 marker observed near movement and skill transitions. It
 
 ### `0A 37` — `CLIENT_FLIGHT_TRANSITION`
 
-A controlled live wing-deployment action emitted a 41-byte transition, three 0B 37 updates, a 40-byte transition, and an 18 37 snapshot. A separate deliberate up/down flight began with the 40-byte form and continued through 38 0B 37 samples. The 41-byte flags-0x03 form adds marker 0x03 immediately before movement_mode; the 40-byte flags-0x02 form omits it.
+Controlled wing deployment, ascent, and forward-flight actions confirmed this transition form. In both the ascent and forward tests, its velocity triplet was byte-identical to the simultaneously emitted first 0B 37 update. The 41-byte flags-0x03 form adds marker 0x03 immediately before movement_mode; the 40-byte flags-0x02 form omits it.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
 | 0 | `bytes[2]` | `opcode` | confirmed |
 | 2 | `u8` | `transition_flags` | observed; 0x02 or 0x03 |
 | 3 | `f32le[3]` | `position_xyz` | confirmed by continuity with 0B 37 |
-| 15 | `f32le[3]` | `movement_vector_xyz` | inferred |
+| 15 | `f32le[3]` | `velocity_xyz` | confirmed by exact equality with the first 0B 37 velocity and subsequent position change |
 | 27 | `f32le` | `heading_degrees` | inferred |
 | 31 | `u8` | `optional_transition_marker` | 0x03 in the 41-byte form; absent from the 40-byte form |
 | body_end-9 | `u8` | `movement_mode` | observed; 0x01 in retained samples |
@@ -307,13 +307,13 @@ A controlled live wing-deployment action emitted a 41-byte transition, three 0B 
 
 ### `0B 37` — `CLIENT_FLIGHT_MOVEMENT`
 
-High-rate flight movement stream associated with 0A 37 transitions. A deliberately isolated up/down flight produced 38 samples over approximately 3.9 seconds, confirming the application meaning. Earlier runs lasted approximately 2.1 and 13.7 seconds and showed the same continuous position, movement-vector, heading, mode, and client-time layout.
+High-rate flight movement stream associated with 0A 37 transitions. Controlled ascent produced a Z velocity near +1187.68, while controlled forward flight produced 41 samples whose velocity integral matched the measured XYZ position change. Stationary hover emitted no 0B 37 samples. The stream therefore reports active flight motion rather than a periodic flight-state heartbeat.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
 | 0 | `bytes[2]` | `opcode` | confirmed |
 | 2 | `f32le[3]` | `position_xyz` | confirmed |
-| 14 | `f32le[3]` | `movement_vector_xyz` | inferred |
+| 14 | `f32le[3]` | `velocity_xyz` | confirmed by controlled ascent/forward actions and integrated position change |
 | 26 | `f32le` | `heading_degrees` | inferred |
 | 30 | `u8` | `movement_mode` | observed; 0x00 or 0x01 |
 | 31 | `u64le` | `client_unix_ms` | confirmed |
@@ -403,9 +403,9 @@ Clear packet that installs an ephemeral RSA-2048 public key with exponent 3.
 | after constant | `ascii[2]` | `region` | confirmed |
 | body_end-1 | `u8` | `trailing_02` | confirmed |
 
-### `10 37` — `CLIENT_SPECIAL_MOVEMENT_10_BOUNDARY`
+### `10 37` — `CLIENT_LANDING_BOUNDARY`
 
-In the special-movement capture, the payload after the opcode matched a simultaneous first 11 37 update byte-for-byte; three more 11 37 samples followed. This indicates a movement-mode boundary, but the action occurred before the controlled marker and remains unnamed.
+A controlled flight-descent action ended with 10 37, four 11 37 updates, and 18 37. A second descent later in the same session reproduced the sequence. The 10 37 post-opcode payload is byte-identical to the simultaneous first 11 37 update, indicating a landing boundary; another explicitly marked landing test should promote the application meaning to locally confirmed.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
@@ -438,9 +438,9 @@ The 256-byte block decrypts as RSA-OAEP-SHA1 and yields the complete 214-byte RC
 | 266 | `u64le` | `reserved` | confirmed |
 | 274 | `i32le` | `sentinel_or_result` | confirmed |
 
-### `11 37` — `CLIENT_SPECIAL_MOVEMENT_11_UPDATE`
+### `11 37` — `CLIENT_LANDING_MOVEMENT`
 
-Four short movement updates in the special-movement capture accompanied one 10 37 boundary packet. The first update had the same post-opcode payload as that boundary. The action occurred before the controlled marker and remains unnamed.
+Two descent sequences each produced exactly four movement updates after a 10 37 boundary and before an 18 37 action-position snapshot. The first update is byte-identical after the opcode to 10 37. Timing and position continuity identify this as a likely landing movement phase pending one explicitly marked landing-only test.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|

@@ -559,6 +559,37 @@ after the reopen marker; `0B 91` had a 17.064-second gap and resumed after
 association, while the differing periods rule out a strict request/reply pair.
 The exact UI or map subsystem meaning of the `00 91` value remains open.
 
+A four-marker flight test then separated ascent, stationary hover, descent,
+and forward flight:
+
+- controlled ascent emitted two `0A 37` / `0B 37` motion bursts. Across 20
+  updates, the Z velocity was a stable approximately `+1187.68`;
+- stationary hover emitted no `0A 37` or `0B 37` traffic, establishing that
+  `0B 37` reports active flight motion rather than periodic flight state;
+- controlled descent used `02 37` followed by thirteen `03 37` updates instead
+  of the flight family. Position Z fell by approximately 2,456 units while
+  velocity Z progressed from approximately `-305` to `-2744`;
+- controlled forward flight emitted one `0A 37`, 41 `0B 37` updates, and an
+  `18 37` snapshot. Integrating the average velocity over 4.235 seconds
+  reproduces the observed position delta, confirming the velocity field.
+
+The `0A 37` transition and simultaneous first `0B 37` update carried
+byte-identical velocity and heading values in both the ascent and forward
+tests. The former `movement_vector_xyz` field is therefore now named
+`velocity_xyz` in both layouts.
+
+The controlled descent ended with this sequence:
+
+```text
+02 37 -> 03 37 x13 -> 10 37 + 11 37 -> 11 37 x3 -> 18 37
+```
+
+A second descent later in the same session reproduced the `10 37` / `11 37`
+tail exactly. In both cases, `10 37` and the simultaneous first `11 37` had
+identical post-opcode payloads, followed by three more position updates. These
+forms are provisionally named the landing boundary and landing movement; one
+explicitly marked landing-only test remains desirable.
+
 `18 37` is an action-position snapshot:
 
 ```text
@@ -911,6 +942,10 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
   open-close-reopen test. Both streams stopped throughout the closed interval
   and resumed after reopening; their independent approximately 1.05- and
   1.20-second cadences exclude a one-for-one packet pair.
+- Separated ascent, hover, descent, and forward flight with labelled markers.
+  This confirmed the `0A 37` / `0B 37` vector triplet as velocity, established
+  that stationary hover emits no flight updates, and linked `10 37` / `11 37`
+  to the landing tail after airborne descent.
 
 ### October 9, 2026
 
