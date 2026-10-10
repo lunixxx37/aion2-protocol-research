@@ -721,6 +721,25 @@ third attempts but was absent from the second, so it is recorded as a
 conditional gather follow-up rather than a mandatory completion packet. The
 specific resource ID remains only in the ignored local event log.
 
+A first labelled loot-collection test emitted exactly one non-periodic C2S
+packet in a 45-second action window:
+
+```text
+20 56
+request_flags:u8
+loot_context_id:u32le
+loot_object_id:u32le
+trailing_flags:u8
+```
+
+Two additional retained `20 56` samples have the same 12-byte shape: one
+occurred earlier in the same live world session during combat, and one came
+from an independent session. The two current-session samples share the first
+`u32le` value while the second differs; both values differ in the older
+session. This supports a stable actor/session context followed by a lootable
+object reference, but those field names remain inferred until another labelled
+loot action uses a different object.
+
 Dodge provides a second independently structured sequence. All retained
 `0E 37` packets use skill `15000100` or variant `15000101`; the public skill
 catalog names `15000100` as Dodge. Separate controlled captures produced two
@@ -1023,6 +1042,9 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
   boundaries and emitted no dedicated route-start request. A coincident
   `01 90` packet was excluded as periodic, while the post-arrival `42 8D`
   sample remains a candidate pending arrival/cancel controls.
+- Isolated a first labelled loot-collection action. Its 45-second window
+  contained only one non-periodic `20 56` packet; two older samples reproduce
+  the 12-byte layout and suggest separate context and loot-object identifiers.
 
 ### October 9, 2026
 

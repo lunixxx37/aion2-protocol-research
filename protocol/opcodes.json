@@ -916,6 +916,23 @@
       ]
     },
     {
+      "wire": "2056",
+      "phase": "world",
+      "directions": ["C2S"],
+      "name": "CLIENT_LOOT_REQUEST",
+      "encryption": "rc4",
+      "confidence": "inferred",
+      "body_lengths": [12],
+      "notes": "A labelled loot-collection action emitted exactly one non-periodic C2S packet in a 45-second window. Two additional retained samples use the same shape: one occurred earlier in the same live world session during combat, and one came from an independent session. The two current-session samples share the first u32le value while their second u32le values differ, consistent with a stable actor or session context followed by the lootable object reference. A second labelled loot action with a different object is still needed to confirm the field roles.",
+      "fields": [
+        {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
+        {"offset": 2, "type": "u8", "name": "request_flags", "status": "observed; 0x01 in three inspected samples"},
+        {"offset": 3, "type": "u32le", "name": "loot_context_id", "status": "inferred; stable across two samples in the same live world session"},
+        {"offset": 7, "type": "u32le", "name": "loot_object_id", "status": "inferred; distinct across three inspected samples"},
+        {"offset": 11, "type": "u8", "name": "trailing_flags", "status": "observed; zero in three inspected samples"}
+      ]
+    },
+    {
       "wire": "3A38",
       "phase": "world",
       "directions": ["C2S"],
