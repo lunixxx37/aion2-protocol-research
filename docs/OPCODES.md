@@ -79,7 +79,7 @@ Snapshot date: `2026-10-10`; client revisions:
 | `1C 37` | `0x371C` | world | S2C | `MOVEMENT_C` | — | — | parser-based |
 | `1D 37` | `0x371D` | world | S2C | `MOVEMENT_RELATED` | — | — | parser-based |
 | `1D 38` | `0x381D` | world | C2S | `CLIENT_LOCATION_SKILL_FOLLOWUP` | 51 | 13 | hypothesis |
-| `20 56` | `0x5620` | world | C2S | `CLIENT_LOOT_REQUEST` | 2 | 12 | locally-confirmed |
+| `20 56` | `0x5620` | world | C2S | `CLIENT_LOOT_ALL_REQUEST` | 2 | 12 | locally-confirmed |
 | `23 36` | `0x3623` | world | S2C | `ZONE` | — | — | parser-based |
 | `2A 38` | `0x382A` | world | S2C | `STATUS_APPLY` | — | — | parser-based |
 | `2B 38` | `0x382B` | world | S2C | `STATUS_APPLY_VARIANT` | — | — | parser-based |
@@ -538,9 +538,9 @@ A fixed 13-byte packet repeatedly follows 1A 38. Its u32 at offset 7 is skill va
 | 11 | `u8` | `stage_marker` | observed; 0x01 in retained samples |
 | 12 | `u8` | `entity_id_tag_or_mode` | unknown; 0x02 in retained samples |
 
-### `20 56` — `CLIENT_LOOT_REQUEST`
+### `20 56` — `CLIENT_LOOT_ALL_REQUEST`
 
-Four labelled successful loot-collection actions each emitted exactly one 20 56 packet, 0.742-1.606 seconds after their markers. At the separate loot-4 marker no loot action occurred and no 20 56 was emitted, providing a clean negative control. Two additional retained samples reproduce the 12-byte shape, including one from an independent session. This confirms the opcode meaning, but not the roles of its two u32le references: the first repeated in two samples and otherwise varied, while the second was distinct in all six inspected packets.
+Four labelled successful F-key actions that collected all available drops from one monster each emitted exactly one 20 56 packet, 0.742-1.606 seconds after their markers. At the separate loot-4 marker no loot action occurred and no 20 56 was emitted, providing a clean negative control. Two additional retained samples reproduce the 12-byte shape, including one from an independent session. This confirms a monster- or loot-container-level loot-all request rather than an individual-item pickup. The roles of its two u32le references remain open: the first repeated in two samples and otherwise varied, while the second was distinct in all six inspected packets.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|

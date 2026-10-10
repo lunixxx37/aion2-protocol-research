@@ -721,7 +721,8 @@ third attempts but was absent from the second, so it is recorded as a
 conditional gather follow-up rather than a mandatory completion packet. The
 specific resource ID remains only in the ignored local event log.
 
-Four labelled successful loot-collection tests each emitted exactly one
+Four labelled successful loot tests used the `F` key, which collects all
+available drops from one monster in a single action. Each emitted exactly one
 `20 56` packet, 0.742-1.606 seconds after the corresponding marker. At the
 separate `loot 4` marker no loot action occurred and no `20 56` was emitted,
 providing a clean negative control:
@@ -740,8 +741,12 @@ independent session. Across the six inspected packets, the flags are always
 `01` and the trailing byte is always zero. The first `u32le` reference repeated
 in two samples and otherwise varied; the second was distinct in all six. The
 repeated labelled actions confirm `20 56` as the client loot request, while the
-two reference roles remain open pending correlation with the matching S2C
-object or inventory records.
+single-action behavior identifies it more specifically as a monster- or
+loot-container-level loot-all request rather than an individual-item pickup.
+The two reference roles remain open pending correlation with the matching S2C
+object or inventory records. A monster containing multiple drops should still
+produce one request; that controlled case will establish whether item count is
+represented only in the S2C response.
 
 Dodge provides a second independently structured sequence. All retained
 `0E 37` packets use skill `15000100` or variant `15000101`; the public skill
@@ -1048,8 +1053,9 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
 - Repeated labelled loot collection four times. Every successful action
   emitted exactly one `20 56`; the separate `loot 4` marker with no loot action
   emitted none. Two older samples reproduce its fixed 12-byte layout, promoting
-  the opcode meaning to locally confirmed while leaving its two references
-  open.
+  the opcode meaning to locally confirmed. The client action collects all drops
+  from one monster with `F`, identifying this as a loot-all request while
+  leaving its two references open.
 
 ### October 9, 2026
 
