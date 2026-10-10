@@ -84,12 +84,14 @@ Snapshot date: `2026-10-10`; client revisions:
 | `2C 38` | `0x382C` | world | S2C | `STATUS_REMOVE` | — | — | parser-based |
 | `2F 8D` | `0x8D2F` | world | S2C | `NOTICE` | — | — | parser-based |
 | `30 38` | `0x3830` | world | C2S | `CLIENT_SKILL_TARGET_CONTEXT` | 121 | 4, 6 | inferred |
+| `30 8D` | `0x8D30` | world | C2S | `CLIENT_GATHER_REQUEST` | 3 | 5 | locally-confirmed |
 | `33 36` | `0x3633` | world | S2C | `LOCAL_PLAYER` | — | — | publicly-confirmed |
-| `33 38` | `0x3833` | world | C2S | `CLIENT_TARGET_SELECTION` | 138 | 4, 6 | inferred |
+| `33 38` | `0x3833` | world | C2S | `CLIENT_TARGET_SELECTION` | 138 | 4, 6 | locally-confirmed |
 | `35 36` | `0x3635` | world | S2C | `SUMMON_SPAWN` | — | — | parser-based |
 | `35 38` | `0x3835` | world | S2C | `SUMMON_OR_SKILL_SEQUENCE` | — | — | parser-based |
 | `3A 38` | `0x383A` | world | C2S | `CLIENT_SKILL_REQUEST_BEGIN` | 870 | 2 | inferred |
 | `3C 38` | `0x383C` | world | C2S | `CLIENT_SKILL_REQUEST_END` | 870 | 2 | inferred |
+| `3D 36` | `0x363D` | world | C2S | `CLIENT_GATHER_FOLLOWUP` | 3 | 5 | inferred |
 | `3D 38` | `0x383D` | world | S2C | `COMBAT_BATCH` | — | — | parser-based |
 | `40 36` | `0x3640` | world | S2C | `SPAWN_VARIANT` | — | — | parser-based |
 | `40 8D` | `0x8D40` | world | C2S | `CLIENT_ZLIB_BLOB` | 16 | 1358, 1361, 1362, 1364 | locally-confirmed |
@@ -130,8 +132,6 @@ Snapshot date: `2026-10-10`; client revisions:
 | `89 56` | `0x5689` | 4 | 8 | Observed after successful RC4 decryption; semantics not assigned. |
 | `08 37` | `0x3708` | 3 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `1F 36` | `0x361F` | 3 | 20 | Observed after successful RC4 decryption; semantics not assigned. |
-| `30 8D` | `0x8D30` | 3 | — | Observed after successful RC4 decryption; semantics not assigned. |
-| `3D 36` | `0x363D` | 3 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `04 90` | `0x9004` | 2 | 3 | Observed after successful RC4 decryption; semantics not assigned. |
 | `12 37` | `0x3712` | 2 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `1F 8D` | `0x8D1F` | 2 | 10 | Observed after successful RC4 decryption; semantics not assigned. |
@@ -538,15 +538,24 @@ Carries the active target entity immediately before targeted skill requests. A z
 | 2 | `u8` | `reference_flags` | observed; zero in retained samples |
 | 3 | `uvarint` | `target_entity_id` | inferred; zero represents no target |
 
+### `30 8D` — `CLIENT_GATHER_REQUEST`
+
+A controlled test collected the same resource three times. Exactly one 30 8D packet began each attempt, and its resource entity ID matched the immediately preceding 33 38 target selection. No 30 8D packets occurred elsewhere in the retained live session.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `uvarint` | `resource_entity_id` | confirmed by three repeated requests and matching 33 38 selection |
+
 ### `33 38` — `CLIENT_TARGET_SELECTION`
 
-Controlled target changes produced 33 38 with the newly selected entity ID. Clearing the target produced a zero entity reference. The compact varint explains both observed body lengths.
+Controlled target changes produced 33 38 with the newly selected entity ID, and clearing the target produced a zero reference. A three-action gathering test independently repeated the select/clear pair around every collection attempt; the selected resource ID matched the following 30 8D request. The compact varint explains both observed body lengths.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
 | 0 | `bytes[2]` | `opcode` | confirmed |
 | 2 | `u8` | `reference_flags` | observed; zero in retained samples |
-| 3 | `uvarint` | `target_entity_id` | inferred; zero represents no target |
+| 3 | `uvarint` | `target_entity_id` | confirmed; zero represents no target |
 
 ### `3A 38` — `CLIENT_SKILL_REQUEST_BEGIN`
 
@@ -563,6 +572,15 @@ Opcode-only packet immediately following the targeted skill request begun by 3A 
 | Offset | Type | Field | Status |
 |---|---|---|---|
 | 0 | `bytes[2]` | `opcode` | confirmed |
+
+### `3D 36` — `CLIENT_GATHER_FOLLOWUP`
+
+Two of three controlled gathering attempts emitted 3D 36 at completion with the same resource entity ID as 33 38 and 30 8D, simultaneous with target clear. Its absence from the second attempt shows that it is a conditional follow-up rather than a mandatory gather-end packet; the condition remains open.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `uvarint` | `resource_entity_id` | confirmed structure; conditional meaning unknown |
 
 ### `40 8D` — `CLIENT_ZLIB_BLOB`
 

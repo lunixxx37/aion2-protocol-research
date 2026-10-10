@@ -677,6 +677,25 @@ target immediately before targeted skill requests, while zero was used for an
 untargeted or self-targeted request. The registry therefore distinguishes
 target selection from per-skill target context.
 
+A later labelled test collected the same resource three times at one location.
+All `30 8D` and `3D 36` traffic in that live session was confined to this
+window. Each attempt had the same core sequence:
+
+```text
+33 38 || 00 || resource_entity_id:uvarint
+30 8D || resource_entity_id:uvarint
+... collection interval ...
+[3D 36 || resource_entity_id:uvarint]
+33 38 || 00 || 00
+```
+
+`30 8D` appeared exactly three times, once at the start of every attempt, and
+always carried the resource ID selected by `33 38`. This confirms it as the
+client gather request. `3D 36` carried the same ID at the end of the first and
+third attempts but was absent from the second, so it is recorded as a
+conditional gather follow-up rather than a mandatory completion packet. The
+specific resource ID remains only in the ignored local event log.
+
 Dodge provides a second independently structured sequence. All retained
 `0E 37` packets use skill `15000100` or variant `15000101`; the public skill
 catalog names `15000100` as Dodge. Separate controlled captures produced two
@@ -946,6 +965,9 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
   This confirmed the `0A 37` / `0B 37` vector triplet as velocity, established
   that stationary hover emits no flight updates, and linked `10 37` / `11 37`
   to the landing tail after airborne descent.
+- Repeated gathering three times at one resource. This confirmed `30 8D` as
+  the gather request, independently reproduced the `33 38` target select/clear
+  lifecycle, and identified `3D 36` as a conditional same-resource follow-up.
 
 ### October 9, 2026
 

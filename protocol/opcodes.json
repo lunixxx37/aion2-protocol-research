@@ -850,13 +850,41 @@
       "directions": ["C2S"],
       "name": "CLIENT_TARGET_SELECTION",
       "encryption": "rc4",
-      "confidence": "inferred",
+      "confidence": "locally-confirmed",
       "body_lengths": [4, 6],
-      "notes": "Controlled target changes produced 33 38 with the newly selected entity ID. Clearing the target produced a zero entity reference. The compact varint explains both observed body lengths.",
+      "notes": "Controlled target changes produced 33 38 with the newly selected entity ID, and clearing the target produced a zero reference. A three-action gathering test independently repeated the select/clear pair around every collection attempt; the selected resource ID matched the following 30 8D request. The compact varint explains both observed body lengths.",
       "fields": [
         {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
         {"offset": 2, "type": "u8", "name": "reference_flags", "status": "observed; zero in retained samples"},
-        {"offset": 3, "type": "uvarint", "name": "target_entity_id", "status": "inferred; zero represents no target"}
+        {"offset": 3, "type": "uvarint", "name": "target_entity_id", "status": "confirmed; zero represents no target"}
+      ]
+    },
+    {
+      "wire": "308D",
+      "phase": "world",
+      "directions": ["C2S"],
+      "name": "CLIENT_GATHER_REQUEST",
+      "encryption": "rc4",
+      "confidence": "locally-confirmed",
+      "body_lengths": [5],
+      "notes": "A controlled test collected the same resource three times. Exactly one 30 8D packet began each attempt, and its resource entity ID matched the immediately preceding 33 38 target selection. No 30 8D packets occurred elsewhere in the retained live session.",
+      "fields": [
+        {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
+        {"offset": 2, "type": "uvarint", "name": "resource_entity_id", "status": "confirmed by three repeated requests and matching 33 38 selection"}
+      ]
+    },
+    {
+      "wire": "3D36",
+      "phase": "world",
+      "directions": ["C2S"],
+      "name": "CLIENT_GATHER_FOLLOWUP",
+      "encryption": "rc4",
+      "confidence": "inferred",
+      "body_lengths": [5],
+      "notes": "Two of three controlled gathering attempts emitted 3D 36 at completion with the same resource entity ID as 33 38 and 30 8D, simultaneous with target clear. Its absence from the second attempt shows that it is a conditional follow-up rather than a mandatory gather-end packet; the condition remains open.",
+      "fields": [
+        {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
+        {"offset": 2, "type": "uvarint", "name": "resource_entity_id", "status": "confirmed structure; conditional meaning unknown"}
       ]
     },
     {
