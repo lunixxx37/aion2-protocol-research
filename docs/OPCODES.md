@@ -31,6 +31,7 @@ Snapshot date: `2026-10-10`; client revisions:
 | `00 38` | `0x3800` | world | C2S | `CLIENT_SKILL_REQUEST` | 976 | 36, 37, 38, 43, 44, 45, 47, 48, 49 | inferred |
 | `00 61` | `0x6100` | world | S2C | `DUNGEON_RUN_STATE` | — | — | parser-based |
 | `00 8D` | `0x8D00` | world | S2C | `HP_UPDATE` | — | — | parser-based |
+| `00 91` | `0x9100` | world | C2S | `CLIENT_MAP_PERIODIC_VALUE` | 22 | 6 | inferred |
 | `01 36` | `0x3601` | world | C2S | `CLIENT_TIME` | 159,676 | 10 | locally-confirmed |
 | `01 37` | `0x3701` | world | C2S | `CLIENT_MOVEMENT_UPDATE` | 5,198 | 29, 30 | inferred |
 | `01 61` | `0x6101` | world | S2C | `DUNGEON_RESULT` | — | — | parser-based |
@@ -52,6 +53,7 @@ Snapshot date: `2026-10-10`; client revisions:
 | `09 38` | `0x3809` | world | S2C | `SKILL_CAST` | — | — | parser-based |
 | `0A 37` | `0x370A` | world | C2S | `CLIENT_FLIGHT_TRANSITION` | 14 | 40, 41 | locally-confirmed |
 | `0B 37` | `0x370B` | world | C2S | `CLIENT_FLIGHT_MOVEMENT` | 260 | 39 | locally-confirmed |
+| `0B 91` | `0x910B` | world | C2S | `CLIENT_MAP_PERIODIC_PULSE` | 19 | 2 | inferred |
 | `0C 37` | `0x370C` | world | C2S | `CLIENT_SPECIAL_MOVEMENT_0C_TRANSITION` | 3 | 67 | inferred |
 | `0D 37` | `0x370D` | world | C2S | `CLIENT_SPECIAL_MOVEMENT_0D_UPDATE` | 16 | 29 | inferred |
 | `0E 37` | `0x370E` | world | C2S | `CLIENT_DODGE_REQUEST` | 120 | 61 | locally-confirmed |
@@ -106,8 +108,6 @@ Snapshot date: `2026-10-10`; client revisions:
 | `13 37` | `0x3713` | 214 | — | Absent from the fifth controlled session covering ordinary movement, jump, target selection, one location-targeted skill, and Dodge. |
 | `17 90` | `0x9017` | 144 | 10 | The three retained plaintext samples were byte-identical. |
 | `06 37` | `0x3706` | 28 | — | Observed after successful RC4 decryption; semantics not assigned. |
-| `00 91` | `0x9100` | 22 | 6 | Observed after successful RC4 decryption; semantics not assigned. |
-| `0B 91` | `0x910B` | 19 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
 | `56 8D` | `0x8D56` | 17 | 4 | Observed after successful RC4 decryption; semantics not assigned. |
 | `59 E2` | `0xE259` | 16 | 440, 632, 648, 1128, 1608 | Observed after successful RC4 decryption; semantics not assigned. |
 | `36 36` | `0x3636` | 14 | 18 | Observed after successful RC4 decryption; semantics not assigned. |
@@ -200,6 +200,15 @@ All 16 distinct u32 values at offset 4 across 323 retained samples match publish
 | if request_flags & 0xA0 | `uvarint` | `optional_parameter_id` | unknown |
 | after optional_parameter_id | `f32le[1 or 2]` | `optional_parameter_values` | shape confirmed; semantics unknown |
 | body_end-8 | `u64le` | `client_unix_ms` | confirmed |
+
+### `00 91` — `CLIENT_MAP_PERIODIC_VALUE`
+
+During a user-labelled 67.7-second map-open interval, the client emitted 65 identical samples at a mean interval of 1.058 seconds. A shorter earlier burst had the same payload and cadence. A controlled close/reopen test is still needed to determine the exact map function.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `u32le` | `map_periodic_value` | observed; 1110 in both retained live bursts, exact meaning unknown |
 
 ### `01 36` — `CLIENT_TIME`
 
@@ -308,6 +317,14 @@ High-rate flight movement stream associated with 0A 37 transitions. A deliberate
 | 26 | `f32le` | `heading_degrees` | inferred |
 | 30 | `u8` | `movement_mode` | observed; 0x00 or 0x01 |
 | 31 | `u64le` | `client_unix_ms` | confirmed |
+
+### `0B 91` — `CLIENT_MAP_PERIODIC_PULSE`
+
+During the same user-labelled 67.7-second map-open interval as 00 91, the client emitted 57 opcode-only samples at a mean interval of 1.204 seconds. The independent cadence shows that this is not a one-for-one acknowledgement of 00 91. A controlled close/reopen test remains pending.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
 
 ### `0C 37` — `CLIENT_SPECIAL_MOVEMENT_0C_TRANSITION`
 

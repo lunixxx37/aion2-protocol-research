@@ -544,6 +544,20 @@ part of that action. The complete timeline places `A1 FF` at an approximately
 30-second cadence before, during, and after the test. Its 20- and 21-byte forms
 are periodic state or telemetry packets whose field semantics remain open.
 
+The same live session also captured a user-labelled map-open interval. It
+produced two independent periodic C2S streams for the full retained 67.7
+seconds:
+
+```text
+00 91 || periodic_value:u32le       # 65 samples, value 1110, mean 1.058 s
+0B 91                               # 57 opcode-only samples, mean 1.204 s
+```
+
+Both payloads were invariant, and a shorter burst six minutes earlier used the
+same values and cadences. The differing periods rule out a strict request/reply
+pair. They are provisionally named map periodic value and pulse; a controlled
+open-close-open test is needed to identify the exact UI or map subsystem roles.
+
 `18 37` is an action-position snapshot:
 
 ```text
@@ -892,6 +906,9 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
   transition/update pair, broadened `02 37` / `03 37` to the airborne/falling
   family, and showed that the interleaved `A1 FF` packet was periodic rather
   than wing-triggered.
+- Correlated `00 91` and opcode-only `0B 91` with a sustained map-open window.
+  Their independent approximately 1.06- and 1.20-second cadences make them
+  periodic map-state candidates rather than a one-for-one packet pair.
 
 ### October 9, 2026
 

@@ -110,6 +110,20 @@
       ]
     },
     {
+      "wire": "0091",
+      "phase": "world",
+      "directions": ["C2S"],
+      "name": "CLIENT_MAP_PERIODIC_VALUE",
+      "encryption": "rc4",
+      "confidence": "inferred",
+      "body_lengths": [6],
+      "notes": "During a user-labelled 67.7-second map-open interval, the client emitted 65 identical samples at a mean interval of 1.058 seconds. A shorter earlier burst had the same payload and cadence. A controlled close/reopen test is still needed to determine the exact map function.",
+      "fields": [
+        {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
+        {"offset": 2, "type": "u32le", "name": "map_periodic_value", "status": "observed; 1110 in both retained live bursts, exact meaning unknown"}
+      ]
+    },
+    {
       "wire": "0136",
       "phase": "world",
       "directions": ["C2S"],
@@ -665,6 +679,19 @@
         {"offset": 26, "type": "f32le", "name": "heading_degrees", "status": "inferred"},
         {"offset": 30, "type": "u8", "name": "movement_mode", "status": "observed; 0x00 or 0x01"},
         {"offset": 31, "type": "u64le", "name": "client_unix_ms", "status": "confirmed"}
+      ]
+    },
+    {
+      "wire": "0B91",
+      "phase": "world",
+      "directions": ["C2S"],
+      "name": "CLIENT_MAP_PERIODIC_PULSE",
+      "encryption": "rc4",
+      "confidence": "inferred",
+      "body_lengths": [2],
+      "notes": "During the same user-labelled 67.7-second map-open interval as 00 91, the client emitted 57 opcode-only samples at a mean interval of 1.204 seconds. The independent cadence shows that this is not a one-for-one acknowledgement of 00 91. A controlled close/reopen test remains pending.",
+      "fields": [
+        {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"}
       ]
     },
     {
