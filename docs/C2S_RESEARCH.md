@@ -857,12 +857,14 @@ neither event by itself.
 
 Two independently labelled mount-up windows emitted no dedicated action
 packet. Their nearby `01 90` samples were explained by the independent periodic
-cadence. Conversely, `04 90 00` appeared 1.193 seconds after a labelled
-dismount. This positive observation plus the two mount-up negative controls
-supports `04 90` as `CLIENT_DISMOUNT_REQUEST`, currently at inferred confidence
-until a second isolated dismount reproduces it. Other `04 90` occurrences were
-not bracketed by sufficiently precise action markers and are not used as
-confirmation.
+cadence. Conversely, two labelled dismount actions each emitted `04 90 00`, at
+1.193 and 5.931 seconds after their markers. In the second test, an `A1 FF`
+sample arrived 0.786 seconds after the marker, but it lies on the uninterrupted
+approximately 30-second `A1 FF` cadence and preceded `04 90` by 5.145 seconds.
+It is therefore unrelated to the action. The two positive repetitions plus two
+mount-up negative controls locally confirm `04 90` as
+`CLIENT_DISMOUNT_REQUEST`. Other unmarked `04 90` occurrences after mounted
+activity are consistent with this result but are not needed as confirmation.
 
 ### 5.5 Offline command
 
@@ -1090,9 +1092,9 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
 - Isolated mount-up, dismount, mounted directional movement, mounted sprint,
   and mounted jump. Ground locomotion and sprint reused `00 37` / `01 37`, and
   the jump reused `02 37` / `03 37` with a +1,100 takeoff velocity. Two mount-up
-  negative controls and one labelled dismount identify `04 90` as an inferred
-  dismount request; another isolated dismount is still required for local
-  confirmation.
+  negative controls and two labelled dismount repetitions locally confirm
+  `04 90 00` as the dismount request. The `A1 FF` sample near the second marker
+  remained exactly on its independent approximately 30-second cadence.
 
 ### October 9, 2026
 

@@ -47,7 +47,7 @@ Snapshot date: `2026-10-10`; client revisions:
 | `04 37` | `0x3704` | world | C2S | `CLIENT_TIMESTAMP_MARKER_04` | 35 | 10 | inferred |
 | `04 38` | `0x3804` | world | S2C | `DIRECT_DAMAGE` | — | — | publicly-confirmed |
 | `04 8D` | `0x8D04` | world | S2C | `NICKNAME_OR_OWNER` | — | — | parser-based |
-| `04 90` | `0x9004` | world | C2S | `CLIENT_DISMOUNT_REQUEST` | 2 | 3 | inferred |
+| `04 90` | `0x9004` | world | C2S | `CLIENT_DISMOUNT_REQUEST` | 2 | 3 | locally-confirmed |
 | `05 37` | `0x3705` | world | C2S | `CLIENT_TIMESTAMP_MARKER_05` | 33 | 10 | inferred |
 | `05 38` | `0x3805` | world | S2C | `DAMAGE_OVER_TIME` | — | — | parser-based |
 | `05 E0` | `0xE005` | world | S2C | `GROGGY_OR_GUARD` | — | — | parser-based |
@@ -293,7 +293,7 @@ Timestamp-only family-37 marker observed near movement and skill transitions. A 
 
 ### `04 90` — `CLIENT_DISMOUNT_REQUEST`
 
-One opcode-plus-zero packet appeared 1.193 seconds after a labelled dismount action. Two separately labelled mount-up windows did not emit 04 90; their only nearby 01 90 packets were explained by its independent periodic cadence. Three further 04 90 packets appeared outside precise action markers, including samples after the mounted-jump and mounted-sprint tests; two older samples occurred inside a capture that mixed riding with auto-navigation. The positive dismount observation plus two negative mount-up controls support dismount-only semantics, pending one more isolated dismount repetition.
+Two separately labelled dismount actions each emitted 04 90 00, respectively 1.193 and 5.931 seconds after their markers. The later action was preceded by an A1 FF packet on its independent approximately 30-second cadence; the dismount request followed 5.145 seconds later. Two separately labelled mount-up windows did not emit 04 90, and their nearby 01 90 packets were likewise explained by an independent periodic cadence. These positive repetitions and negative controls confirm dismount-only semantics. Additional unmarked occurrences after mounted activity are consistent with that result.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
