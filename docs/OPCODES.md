@@ -28,7 +28,7 @@ Snapshot date: `2026-10-10`; client revisions:
 | `0F 39` | `0x390F` | lobby | S2C | `LOBBY_WORLD_REDIRECT` | — | — | publicly-confirmed |
 | `00 36` | `0x3600` | world | S2C | `SERVER_TICK` | — | 10 | locally-confirmed |
 | `00 37` | `0x3700` | world | C2S | `CLIENT_MOVEMENT_UPDATE_VARIANT` | 411 | 30 | inferred |
-| `00 38` | `0x3800` | world | C2S | `CLIENT_SKILL_REQUEST` | 976 | 36, 37, 38, 43, 44, 45, 47, 48, 49 | inferred |
+| `00 38` | `0x3800` | world | C2S | `CLIENT_SKILL_REQUEST` | 976 | 36, 37, 38, 43, 44, 45, 47, 48, 49 | locally-confirmed |
 | `00 61` | `0x6100` | world | S2C | `DUNGEON_RUN_STATE` | — | — | parser-based |
 | `00 8D` | `0x8D00` | world | S2C | `HP_UPDATE` | — | — | parser-based |
 | `00 91` | `0x9100` | world | C2S | `CLIENT_MAP_PERIODIC_VALUE` | 22 | 6 | locally-confirmed |
@@ -83,14 +83,14 @@ Snapshot date: `2026-10-10`; client revisions:
 | `2B 38` | `0x382B` | world | S2C | `STATUS_APPLY_VARIANT` | — | — | parser-based |
 | `2C 38` | `0x382C` | world | S2C | `STATUS_REMOVE` | — | — | parser-based |
 | `2F 8D` | `0x8D2F` | world | S2C | `NOTICE` | — | — | parser-based |
-| `30 38` | `0x3830` | world | C2S | `CLIENT_SKILL_TARGET_CONTEXT` | 121 | 4, 6 | inferred |
+| `30 38` | `0x3830` | world | C2S | `CLIENT_SKILL_TARGET_CONTEXT` | 121 | 4, 6 | locally-confirmed |
 | `30 8D` | `0x8D30` | world | C2S | `CLIENT_GATHER_REQUEST` | 3 | 5 | locally-confirmed |
 | `33 36` | `0x3633` | world | S2C | `LOCAL_PLAYER` | — | — | publicly-confirmed |
 | `33 38` | `0x3833` | world | C2S | `CLIENT_TARGET_SELECTION` | 138 | 4, 6 | locally-confirmed |
 | `35 36` | `0x3635` | world | S2C | `SUMMON_SPAWN` | — | — | parser-based |
 | `35 38` | `0x3835` | world | S2C | `SUMMON_OR_SKILL_SEQUENCE` | — | — | parser-based |
-| `3A 38` | `0x383A` | world | C2S | `CLIENT_SKILL_REQUEST_BEGIN` | 870 | 2 | inferred |
-| `3C 38` | `0x383C` | world | C2S | `CLIENT_SKILL_REQUEST_END` | 870 | 2 | inferred |
+| `3A 38` | `0x383A` | world | C2S | `CLIENT_SKILL_REQUEST_BEGIN` | 870 | 2 | locally-confirmed |
+| `3C 38` | `0x383C` | world | C2S | `CLIENT_SKILL_REQUEST_END` | 870 | 2 | locally-confirmed |
 | `3D 36` | `0x363D` | world | C2S | `CLIENT_GATHER_FOLLOWUP` | 3 | 5 | inferred |
 | `3D 38` | `0x383D` | world | S2C | `COMBAT_BATCH` | — | — | parser-based |
 | `40 36` | `0x3640` | world | S2C | `SPAWN_VARIANT` | — | — | parser-based |
@@ -183,7 +183,7 @@ Shares the same position, movement-heading, facing-heading, mode, and timestamp 
 
 ### `00 38` — `CLIENT_SKILL_REQUEST`
 
-All 16 distinct u32 values at offset 4 across 323 retained samples match published skill IDs. The request flags select a fixed 17-byte aim block, an optional one-byte marker, and zero, one, or two trailing float parameters.
+All 16 distinct u32 values at offset 4 across 323 snapshot samples match published skill IDs. A separate labelled single-cast test emitted one 37-byte request for skill 15210450 between 3A 38 and 3C 38; its target ID matched both the immediately preceding 33 38 selection and 30 38 cast context. The request flags select a fixed 17-byte aim block, an optional one-byte marker, and zero, one, or two trailing float parameters.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
@@ -192,7 +192,7 @@ All 16 distinct u32 values at offset 4 across 323 retained samples match publish
 | 3 | `u8` | `request_stage` | observed; 0x01 in retained samples |
 | 4 | `u32le` | `skill_id` | confirmed |
 | 8 | `u8` | `entity_id_tag` | observed; 0x02 in retained samples |
-| 9 | `uvarint` | `target_entity_id` | inferred |
+| 9 | `uvarint` | `target_entity_id` | confirmed by equality with controlled 33 38 and 30 38 target references |
 | after target_entity_id | `f32le` | `aim_heading_degrees` | inferred |
 | after aim_heading_degrees | `f32le[3]` | `target_or_aim_xyz` | inferred |
 | after target_or_aim_xyz | `u8` | `action_mode` | observed |
@@ -530,13 +530,13 @@ A fixed 13-byte packet repeatedly follows 1A 38. Its u32 at offset 7 is skill va
 
 ### `30 38` — `CLIENT_SKILL_TARGET_CONTEXT`
 
-Carries the active target entity immediately before targeted skill requests. A zero reference was observed when the following request was self-targeted or had no selected target. This is distinct from 33 38 target-selection changes.
+Carries the cast-specific target immediately before targeted skill requests. In a labelled single-cast test, its entity ID matched both 33 38 selection and the following 00 38 request; its zero form arrived 2.756 seconds later without a 33 38 target clear. Zero is also used when the following request is self-targeted or has no selected target. This is distinct from persistent target selection.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
 | 0 | `bytes[2]` | `opcode` | confirmed |
 | 2 | `u8` | `reference_flags` | observed; zero in retained samples |
-| 3 | `uvarint` | `target_entity_id` | inferred; zero represents no target |
+| 3 | `uvarint` | `target_entity_id` | confirmed; zero represents no cast-specific target |
 
 ### `30 8D` — `CLIENT_GATHER_REQUEST`
 
@@ -559,7 +559,7 @@ Controlled target changes produced 33 38 with the newly selected entity ID, and 
 
 ### `3A 38` — `CLIENT_SKILL_REQUEST_BEGIN`
 
-Opcode-only packet immediately preceding targeted 00 38 skill requests. Four controlled pairs bracketed Flame Arrow, Blaze, Bittercold Wind, and Firestorm. No captured pair exceeded 107 ms, supporting a protocol request boundary rather than raw key-down state; another dedicated hold test should confirm this.
+Opcode-only packet immediately preceding targeted 00 38 skill requests. Four earlier controlled pairs bracketed Flame Arrow, Blaze, Bittercold Wind, and Firestorm. A separately labelled cast added a fifth controlled pair: 3A 38, 30 38, and 00 38 shared one capture timestamp, while 3C 38 followed 94 ms later and the target context remained active for 2.756 seconds. This confirms a request boundary rather than cast duration.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
@@ -567,7 +567,7 @@ Opcode-only packet immediately preceding targeted 00 38 skill requests. Four con
 
 ### `3C 38` — `CLIENT_SKILL_REQUEST_END`
 
-Opcode-only packet immediately following the targeted skill request begun by 3A 38. In the controlled capture it arrived 67-107 ms after 3A 38; another dedicated hold test should confirm that the interval is independent of input duration.
+Opcode-only packet immediately following the targeted skill request begun by 3A 38. Earlier controlled pairs spanned 67-107 ms. In a separately labelled cast it arrived 94 ms after 3A 38, while the cast-specific 30 38 target context remained active until 2.756 seconds after the request, confirming that 3C 38 ends the request envelope rather than the cast itself.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|

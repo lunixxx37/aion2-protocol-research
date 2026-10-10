@@ -662,6 +662,24 @@ than raw key-down/key-up semantics, although a dedicated hold-only capture
 should confirm it. Dodge and the observed self-targeted Wish of Concentration
 request used their own paths and were not enclosed by the pair.
 
+A later labelled single-cast test isolated a fifth targeted request:
+
+```text
+33 38 target selection
+3A 38 + 30 38 target context + 00 38 skill request
+94 ms
+3C 38
+2,662 ms
+30 38 zero target context
+```
+
+The request carried skill ID `15210450`, flags `01`, stage `01`, and action
+mode `02`. Its target varint was byte-equal to the immediately preceding
+`33 38` selection and `30 38` context. The zero `30 38` form arrived 2.756
+seconds after the request, while no `33 38` target clear occurred. This
+confirms that `30 38` is temporary cast context and that `3A 38` / `3C 38`
+bound request construction rather than the full cast duration.
+
 `30 38` and `33 38` both have a compact target-reference shape:
 
 ```text
@@ -978,6 +996,9 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
 - Repeatedly selected nearby mobs with TAB. Sixteen `33 38` packets cycled
   among six entity IDs without any companion action opcode, establishing that
   TAB selection is client-side logic followed by the normal target update.
+- Isolated one labelled targeted cast. The target ID matched across `33 38`,
+  `30 38`, and `00 38`; the 94-ms `3A 38` / `3C 38` envelope ended well before
+  the cast-specific target context cleared, confirming the request lifecycle.
 
 ### October 9, 2026
 

@@ -810,16 +810,16 @@
       "directions": ["C2S"],
       "name": "CLIENT_SKILL_REQUEST",
       "encryption": "rc4",
-      "confidence": "inferred",
+      "confidence": "locally-confirmed",
       "body_lengths": [36, 37, 38, 43, 44, 45, 47, 48, 49],
-      "notes": "All 16 distinct u32 values at offset 4 across 323 retained samples match published skill IDs. The request flags select a fixed 17-byte aim block, an optional one-byte marker, and zero, one, or two trailing float parameters.",
+      "notes": "All 16 distinct u32 values at offset 4 across 323 snapshot samples match published skill IDs. A separate labelled single-cast test emitted one 37-byte request for skill 15210450 between 3A 38 and 3C 38; its target ID matched both the immediately preceding 33 38 selection and 30 38 cast context. The request flags select a fixed 17-byte aim block, an optional one-byte marker, and zero, one, or two trailing float parameters.",
       "fields": [
         {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
         {"offset": 2, "type": "u8", "name": "request_flags", "status": "observed"},
         {"offset": 3, "type": "u8", "name": "request_stage", "status": "observed; 0x01 in retained samples"},
         {"offset": 4, "type": "u32le", "name": "skill_id", "status": "confirmed"},
         {"offset": 8, "type": "u8", "name": "entity_id_tag", "status": "observed; 0x02 in retained samples"},
-        {"offset": 9, "type": "uvarint", "name": "target_entity_id", "status": "inferred"},
+        {"offset": 9, "type": "uvarint", "name": "target_entity_id", "status": "confirmed by equality with controlled 33 38 and 30 38 target references"},
         {"offset": "after target_entity_id", "type": "f32le", "name": "aim_heading_degrees", "status": "inferred"},
         {"offset": "after aim_heading_degrees", "type": "f32le[3]", "name": "target_or_aim_xyz", "status": "inferred"},
         {"offset": "after target_or_aim_xyz", "type": "u8", "name": "action_mode", "status": "observed"},
@@ -835,13 +835,13 @@
       "directions": ["C2S"],
       "name": "CLIENT_SKILL_TARGET_CONTEXT",
       "encryption": "rc4",
-      "confidence": "inferred",
+      "confidence": "locally-confirmed",
       "body_lengths": [4, 6],
-      "notes": "Carries the active target entity immediately before targeted skill requests. A zero reference was observed when the following request was self-targeted or had no selected target. This is distinct from 33 38 target-selection changes.",
+      "notes": "Carries the cast-specific target immediately before targeted skill requests. In a labelled single-cast test, its entity ID matched both 33 38 selection and the following 00 38 request; its zero form arrived 2.756 seconds later without a 33 38 target clear. Zero is also used when the following request is self-targeted or has no selected target. This is distinct from persistent target selection.",
       "fields": [
         {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
         {"offset": 2, "type": "u8", "name": "reference_flags", "status": "observed; zero in retained samples"},
-        {"offset": 3, "type": "uvarint", "name": "target_entity_id", "status": "inferred; zero represents no target"}
+        {"offset": 3, "type": "uvarint", "name": "target_entity_id", "status": "confirmed; zero represents no cast-specific target"}
       ]
     },
     {
@@ -893,9 +893,9 @@
       "directions": ["C2S"],
       "name": "CLIENT_SKILL_REQUEST_BEGIN",
       "encryption": "rc4",
-      "confidence": "inferred",
+      "confidence": "locally-confirmed",
       "body_lengths": [2],
-      "notes": "Opcode-only packet immediately preceding targeted 00 38 skill requests. Four controlled pairs bracketed Flame Arrow, Blaze, Bittercold Wind, and Firestorm. No captured pair exceeded 107 ms, supporting a protocol request boundary rather than raw key-down state; another dedicated hold test should confirm this.",
+      "notes": "Opcode-only packet immediately preceding targeted 00 38 skill requests. Four earlier controlled pairs bracketed Flame Arrow, Blaze, Bittercold Wind, and Firestorm. A separately labelled cast added a fifth controlled pair: 3A 38, 30 38, and 00 38 shared one capture timestamp, while 3C 38 followed 94 ms later and the target context remained active for 2.756 seconds. This confirms a request boundary rather than cast duration.",
       "fields": [
         {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"}
       ]
@@ -906,9 +906,9 @@
       "directions": ["C2S"],
       "name": "CLIENT_SKILL_REQUEST_END",
       "encryption": "rc4",
-      "confidence": "inferred",
+      "confidence": "locally-confirmed",
       "body_lengths": [2],
-      "notes": "Opcode-only packet immediately following the targeted skill request begun by 3A 38. In the controlled capture it arrived 67-107 ms after 3A 38; another dedicated hold test should confirm that the interval is independent of input duration.",
+      "notes": "Opcode-only packet immediately following the targeted skill request begun by 3A 38. Earlier controlled pairs spanned 67-107 ms. In a separately labelled cast it arrived 94 ms after 3A 38, while the cast-specific 30 38 target context remained active until 2.756 seconds after the request, confirming that 3C 38 ends the request envelope rather than the cast itself.",
       "fields": [
         {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"}
       ]
