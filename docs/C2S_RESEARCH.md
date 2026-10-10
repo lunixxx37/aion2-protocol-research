@@ -828,14 +828,41 @@ of path over 2.2 seconds, with about 1,904 units of net displacement. No
 quest auto-navigation was therefore server-visible as the normal ground
 movement stream; no separate C2S route-start request preceded that stream.
 
-One `01 90` packet overlapped the movement interval, but two timestamped
-samples from an earlier session were 29.143 seconds apart and all three bodies
-were identical. It is a periodic value rather than an auto-navigation signal.
+One `01 90` packet overlapped the movement interval, but timestamped pairs from
+independent world sessions were 29.143 and 30.039 seconds apart and all six
+retained bodies were identical. It is a periodic value rather than an
+auto-navigation or mount signal.
 A single `42 8D` packet appeared 1.450 seconds after the final `05 37`. It is
 recorded as a quest/auto-navigation candidate, not as a confirmed navigation
 opcode: separate arrival, manual-cancel, and quest-selection markers are still
 needed. Skill traffic began only after a further 26-second quiet interval and
 was excluded from the navigation sequence.
+
+Labelled mount controls show that mounted locomotion reuses the normal movement
+families. A mounted all-directions run began with `00 37`, emitted 41 ordinary
+`01 37` updates, and ended with `18 37`; its 43 position samples covered about
+3,938 units of path in 4.461 seconds. A separate mounted sprint emitted one
+`00 37`, 22 `01 37` updates, the known `04 37` / `05 37` timestamp markers,
+and `18 37`. Its 23 position samples covered about 2,586 units in 2.188 seconds,
+or approximately 1,182 units per second. No dedicated sprint opcode preceded
+the stream, so sprint state is probably encoded in an unresolved field of the
+ordinary movement records or maintained as prior client/server state.
+
+A mounted jump also reused `02 37` / `03 37`. Its takeoff transition carried
+approximately +1,100 vertical velocity, compared with +1,000 in the retained
+ordinary jump. Seven airborne updates progressed from approximately +638 to
+-977 vertical velocity. Near the apex, the 41-byte transition used marker
+`0x04`; because the same marker was observed on manual wing exit, it identifies
+neither event by itself.
+
+Two independently labelled mount-up windows emitted no dedicated action
+packet. Their nearby `01 90` samples were explained by the independent periodic
+cadence. Conversely, `04 90 00` appeared 1.193 seconds after a labelled
+dismount. This positive observation plus the two mount-up negative controls
+supports `04 90` as `CLIENT_DISMOUNT_REQUEST`, currently at inferred confidence
+until a second isolated dismount reproduces it. Other `04 90` occurrences were
+not bracketed by sufficiently precise action markers and are not used as
+confirmation.
 
 ### 5.5 Offline command
 
@@ -1060,6 +1087,12 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
   loot target into one `20 56`: count one produced a 12-byte body and count two
   produced a 20-byte body with two eight-byte records. This confirms the count
   and record width while leaving the two record references open.
+- Isolated mount-up, dismount, mounted directional movement, mounted sprint,
+  and mounted jump. Ground locomotion and sprint reused `00 37` / `01 37`, and
+  the jump reused `02 37` / `03 37` with a +1,100 takeoff velocity. Two mount-up
+  negative controls and one labelled dismount identify `04 90` as an inferred
+  dismount request; another isolated dismount is still required for local
+  confirmation.
 
 ### October 9, 2026
 

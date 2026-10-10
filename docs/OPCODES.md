@@ -47,6 +47,7 @@ Snapshot date: `2026-10-10`; client revisions:
 | `04 37` | `0x3704` | world | C2S | `CLIENT_TIMESTAMP_MARKER_04` | 35 | 10 | inferred |
 | `04 38` | `0x3804` | world | S2C | `DIRECT_DAMAGE` | — | — | publicly-confirmed |
 | `04 8D` | `0x8D04` | world | S2C | `NICKNAME_OR_OWNER` | — | — | parser-based |
+| `04 90` | `0x9004` | world | C2S | `CLIENT_DISMOUNT_REQUEST` | 2 | 3 | inferred |
 | `05 37` | `0x3705` | world | C2S | `CLIENT_TIMESTAMP_MARKER_05` | 33 | 10 | inferred |
 | `05 38` | `0x3805` | world | S2C | `DAMAGE_OVER_TIME` | — | — | parser-based |
 | `05 E0` | `0xE005` | world | S2C | `GROGGY_OR_GUARD` | — | — | parser-based |
@@ -134,7 +135,6 @@ Snapshot date: `2026-10-10`; client revisions:
 | `89 56` | `0x5689` | 4 | 8 | Observed after successful RC4 decryption; semantics not assigned. |
 | `08 37` | `0x3708` | 3 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `1F 36` | `0x361F` | 3 | 20 | Observed after successful RC4 decryption; semantics not assigned. |
-| `04 90` | `0x9004` | 2 | 3 | Observed after successful RC4 decryption; semantics not assigned. |
 | `12 37` | `0x3712` | 2 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `1F 8D` | `0x8D1F` | 2 | 10 | Observed after successful RC4 decryption; semantics not assigned. |
 | `2B E3` | `0xE32B` | 2 | 4 | Observed after successful RC4 decryption; semantics not assigned. |
@@ -170,7 +170,7 @@ Regular server timestamp packet.
 
 ### `00 37` — `CLIENT_MOVEMENT_UPDATE_VARIANT`
 
-Shares the same position, movement-heading, facing-heading, mode, and timestamp layout as 01 37, but occurs much less often and commonly follows movement-skill sequences. A marked quest auto-navigation run began with this form, continued through 20 ordinary 01 37 updates, and ended with another 00 37 plus action-position snapshots; no dedicated navigation movement family appeared. The compressed heading decodes as value * 360 / 65536 degrees; divergence from the float heading is consistent with movement direction differing from facing direction.
+Shares the same position, movement-heading, facing-heading, mode, and timestamp layout as 01 37, but occurs much less often and commonly follows movement-skill sequences. Marked quest auto-navigation, mounted directional movement, and mounted sprint runs began with this form and continued through ordinary 01 37 updates; none used a dedicated movement family. The compressed heading decodes as value * 360 / 65536 degrees; divergence from the float heading is consistent with movement direction differing from facing direction.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
@@ -222,7 +222,7 @@ A newly sampled client timestamp, not an exact echo of the preceding server tick
 
 ### `01 37` — `CLIENT_MOVEMENT_UPDATE`
 
-High-frequency movement update. The 30-byte moving form uses flags 0x02 and carries movement_mode 0x01. A controlled capture added a 29-byte flags-0x00 stop/idle form without movement_mode. A marked quest auto-navigation run emitted 20 moving forms at approximately 10 Hz, showing that server-visible auto-navigation uses the ordinary ground-movement stream. The compressed heading decodes as value * 360 / 65536 degrees; its occasional divergence from the float heading is consistent with strafing or backwards movement.
+High-frequency movement update. The 30-byte moving form uses flags 0x02 and carries movement_mode 0x01. A controlled capture added a 29-byte flags-0x00 stop/idle form without movement_mode. A marked quest auto-navigation run emitted 20 moving forms, a mounted all-directions run emitted 41, and a mounted sprint run emitted 22; all used the ordinary ground-movement stream at approximately 10 Hz. The compressed heading decodes as value * 360 / 65536 degrees; its occasional divergence from the float heading is consistent with strafing or backwards movement.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
@@ -236,12 +236,12 @@ High-frequency movement update. The 30-byte moving form uses flags 0x02 and carr
 
 ### `01 90` — `CLIENT_PERIODIC_VALUE_0190`
 
-Three timestamped samples carried the same u32le value. Two samples from an earlier capture were 29.143 seconds apart; a third happened during a marked quest auto-navigation run. The earlier cadence shows that the navigation overlap is incidental rather than evidence of a navigation command.
+Six timestamped samples carried the same u32le value. Pairs from independent world sessions were 29.143 and 30.039 seconds apart. Samples happened during marked quest auto-navigation and mount-up windows, but the action-independent cadence shows that both overlaps are incidental rather than navigation or mount commands.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
 | 0 | `bytes[2]` | `opcode` | confirmed |
-| 2 | `u32le` | `periodic_value` | observed; invariant in three timestamped samples |
+| 2 | `u32le` | `periodic_value` | observed; invariant in six timestamped samples |
 
 ### `02 36` — `CLIENT_PERIODIC_TELEMETRY`
 
@@ -255,13 +255,13 @@ The first three consecutive retained samples increase the u64 value by exactly 1
 
 ### `02 37` — `CLIENT_AIRBORNE_TRANSITION`
 
-An isolated stationary jump emitted a 40-byte takeoff form with +1000 vertical velocity and a 41-byte near-apex form. Separate controlled actions used the 41-byte form for flight descent and manual wing exit. The marker distinguishes the observed transitions: 0x02 near the jump apex, 0x03 at the start of controlled descent, and 0x04 on manual wing exit.
+An isolated stationary jump emitted a 40-byte takeoff form with +1000 vertical velocity and a 41-byte near-apex form. A mounted jump reused the family with +1100 takeoff velocity and a marker-0x04 transition near its apex at approximately -9 vertical velocity. Separate controlled actions used the 41-byte form for flight descent and manual wing exit. Marker 0x04 is therefore shared by mounted-jump apex and manual wing exit rather than uniquely identifying wing exit; marker 0x02 occurred near the ordinary jump apex and 0x03 at controlled flight descent.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
 | 0 | `bytes[2]` | `opcode` | confirmed |
 | 2 | `u8` | `transition_flags` | observed; 0x14 at jump takeoff and 0x11 near the jump apex or on manual wing exit |
-| 3 | `u8` | `optional_marker` | present in 41-byte flags-0x11 forms; 0x02 near the jump apex, 0x03 at controlled flight descent, and 0x04 on manual wing exit |
+| 3 | `u8` | `optional_marker` | present in 41-byte flags-0x11 forms; 0x02 near ordinary jump apex, 0x03 at controlled flight descent, and 0x04 at mounted-jump apex or manual wing exit |
 | after optional_marker if present | `f32le[3]` | `position_xyz` | confirmed |
 | after position_xyz | `f32le` | `heading_degrees` | inferred |
 | after heading_degrees | `f32le[3]` | `velocity_xyz` | confirmed by controlled jump and descent trajectories |
@@ -270,7 +270,7 @@ An isolated stationary jump emitted a 40-byte takeoff form with +1000 vertical v
 
 ### `03 37` — `CLIENT_AIRBORNE_MOVEMENT`
 
-Six samples at approximately 10 Hz described an isolated stationary jump, and a manual wing exit produced four more. A controlled flight-descent action added 13 samples whose Z velocity progressed from approximately -305 to -2744 while position Z fell by 2456 units. This is the airborne or falling movement stream shared by jumping, flight descent, and wing exit.
+Six samples at approximately 10 Hz described an isolated stationary jump, and a manual wing exit produced four more. A controlled flight-descent action added 13 samples whose Z velocity progressed from approximately -305 to -2744 while position Z fell by 2456 units. A mounted jump added seven samples progressing from approximately +638 to -977 around a marker-0x04 apex transition. This is the airborne or falling movement stream shared by ordinary and mounted jumping, flight descent, and wing exit.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
@@ -290,6 +290,15 @@ Timestamp-only family-37 marker observed near movement and skill transitions. A 
 |---|---|---|---|
 | 0 | `bytes[2]` | `opcode` | confirmed |
 | 2 | `u64le` | `client_unix_ms` | confirmed in every retained plaintext sample |
+
+### `04 90` — `CLIENT_DISMOUNT_REQUEST`
+
+One opcode-plus-zero packet appeared 1.193 seconds after a labelled dismount action. Two separately labelled mount-up windows did not emit 04 90; their only nearby 01 90 packets were explained by its independent periodic cadence. Three further 04 90 packets appeared outside precise action markers, including samples after the mounted-jump and mounted-sprint tests; two older samples occurred inside a capture that mixed riding with auto-navigation. The positive dismount observation plus two negative mount-up controls support dismount-only semantics, pending one more isolated dismount repetition.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `u8` | `mount_parameter` | observed; zero in all retained samples |
 
 ### `05 37` — `CLIENT_TIMESTAMP_MARKER_05`
 
