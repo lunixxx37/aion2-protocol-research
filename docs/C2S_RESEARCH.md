@@ -789,6 +789,25 @@ auto-navigation, riding, ordinary movement, and Dodge, so the application
 meanings were initially left neutral. The later isolated live-viewer actions
 identify `0A 37` / `0B 37` as flight; the other families remain unnamed.
 
+A later labelled quest auto-navigation run isolated a short ground-only
+segment. At movement onset the client emitted `00 37`, a timestamp-only
+`04 37`, and then 20 ordinary `01 37` updates at approximately 10 Hz. The run
+ended with another `00 37`, two `18 37` action-position snapshots, and the
+timestamp-only `05 37`. The position samples covered approximately 2,159 units
+of path over 2.2 seconds, with about 1,904 units of net displacement. No
+`0C 37` / `0D 37`, `19 37`, flight, or airborne packet appeared. In this test,
+quest auto-navigation was therefore server-visible as the normal ground
+movement stream; no separate C2S route-start request preceded that stream.
+
+One `01 90` packet overlapped the movement interval, but two timestamped
+samples from an earlier session were 29.143 seconds apart and all three bodies
+were identical. It is a periodic value rather than an auto-navigation signal.
+A single `42 8D` packet appeared 1.450 seconds after the final `05 37`. It is
+recorded as a quest/auto-navigation candidate, not as a confirmed navigation
+opcode: separate arrival, manual-cancel, and quest-selection markers are still
+needed. Skill traffic began only after a further 26-second quiet interval and
+was excluded from the navigation sequence.
+
 ### 5.5 Offline command
 
 ```powershell
@@ -999,6 +1018,11 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
 - Isolated one labelled targeted cast. The target ID matched across `33 38`,
   `30 38`, and `00 38`; the 94-ms `3A 38` / `3C 38` envelope ended well before
   the cast-specific target context cleared, confirming the request lifecycle.
+- Isolated one labelled quest auto-navigation run. It used the ordinary
+  `00 37` / `01 37` ground-movement stream with `04 37` / `05 37` timestamp
+  boundaries and emitted no dedicated route-start request. A coincident
+  `01 90` packet was excluded as periodic, while the post-arrival `42 8D`
+  sample remains a candidate pending arrival/cancel controls.
 
 ### October 9, 2026
 

@@ -546,7 +546,7 @@
       "encryption": "rc4",
       "confidence": "inferred",
       "body_lengths": [30],
-      "notes": "Shares the same position, movement-heading, facing-heading, mode, and timestamp layout as 01 37, but occurs much less often and commonly follows movement-skill sequences. The compressed heading decodes as value * 360 / 65536 degrees; divergence from the float heading is consistent with movement direction differing from facing direction.",
+      "notes": "Shares the same position, movement-heading, facing-heading, mode, and timestamp layout as 01 37, but occurs much less often and commonly follows movement-skill sequences. A marked quest auto-navigation run began with this form, continued through 20 ordinary 01 37 updates, and ended with another 00 37 plus action-position snapshots; no dedicated navigation movement family appeared. The compressed heading decodes as value * 360 / 65536 degrees; divergence from the float heading is consistent with movement direction differing from facing direction.",
       "fields": [
         {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
         {"offset": 2, "type": "u8", "name": "movement_flags", "status": "observed; 0x02 in retained samples"},
@@ -565,7 +565,7 @@
       "encryption": "rc4",
       "confidence": "inferred",
       "body_lengths": [29, 30],
-      "notes": "High-frequency movement update. The 30-byte moving form uses flags 0x02 and carries movement_mode 0x01. A controlled capture added a 29-byte flags-0x00 stop/idle form without movement_mode. The compressed heading decodes as value * 360 / 65536 degrees; its occasional divergence from the float heading is consistent with strafing or backwards movement.",
+      "notes": "High-frequency movement update. The 30-byte moving form uses flags 0x02 and carries movement_mode 0x01. A controlled capture added a 29-byte flags-0x00 stop/idle form without movement_mode. A marked quest auto-navigation run emitted 20 moving forms at approximately 10 Hz, showing that server-visible auto-navigation uses the ordinary ground-movement stream. The compressed heading decodes as value * 360 / 65536 degrees; its occasional divergence from the float heading is consistent with strafing or backwards movement.",
       "fields": [
         {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
         {"offset": 2, "type": "u8", "name": "movement_flags", "status": "observed; 0x00 or 0x02"},
@@ -623,7 +623,7 @@
       "encryption": "rc4",
       "confidence": "inferred",
       "body_lengths": [10],
-      "notes": "Timestamp-only family-37 marker observed near movement and skill transitions. Its exact application meaning and distinction from 05 37 remain open.",
+      "notes": "Timestamp-only family-37 marker observed near movement and skill transitions. A marked quest auto-navigation run placed it eight milliseconds after the first 00 37 movement update, but earlier Dodge/skill and gathering sequences show that it is not navigation-specific. Its exact application meaning and distinction from 05 37 remain open.",
       "fields": [
         {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
         {"offset": 2, "type": "u64le", "name": "client_unix_ms", "status": "confirmed in every retained plaintext sample"}
@@ -637,7 +637,7 @@
       "encryption": "rc4",
       "confidence": "inferred",
       "body_lengths": [10],
-      "notes": "Timestamp-only family-37 marker observed near movement and skill transitions. Its exact application meaning and distinction from 04 37 remain open.",
+      "notes": "Timestamp-only family-37 marker observed near movement and skill transitions. A marked quest auto-navigation run placed it after the final action-position snapshots, but earlier flight and gathering sequences show that it is not navigation-specific. Its exact application meaning and distinction from 04 37 remain open.",
       "fields": [
         {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
         {"offset": 2, "type": "u64le", "name": "client_unix_ms", "status": "confirmed in every retained plaintext sample"}
@@ -692,6 +692,20 @@
       "notes": "A controlled map open-close-reopen test confirmed this opcode-only stream runs only while the map is open. One already-scheduled pulse arrived 484 ms after the close marker, followed by a 17.064-second gap; transmission resumed 1.056 seconds after the reopen marker. Its approximately 1.204-second cadence is independent of 00 91, excluding a one-for-one acknowledgement relationship.",
       "fields": [
         {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"}
+      ]
+    },
+    {
+      "wire": "0190",
+      "phase": "world",
+      "directions": ["C2S"],
+      "name": "CLIENT_PERIODIC_VALUE_0190",
+      "encryption": "rc4",
+      "confidence": "observed",
+      "body_lengths": [6],
+      "notes": "Three timestamped samples carried the same u32le value. Two samples from an earlier capture were 29.143 seconds apart; a third happened during a marked quest auto-navigation run. The earlier cadence shows that the navigation overlap is incidental rather than evidence of a navigation command.",
+      "fields": [
+        {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
+        {"offset": 2, "type": "u32le", "name": "periodic_value", "status": "observed; invariant in three timestamped samples"}
       ]
     },
     {
@@ -885,6 +899,20 @@
       "fields": [
         {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
         {"offset": 2, "type": "uvarint", "name": "resource_entity_id", "status": "confirmed structure; conditional meaning unknown"}
+      ]
+    },
+    {
+      "wire": "428D",
+      "phase": "world",
+      "directions": ["C2S"],
+      "name": "CLIENT_QUEST_AUTONAV_CANDIDATE",
+      "encryption": "rc4",
+      "confidence": "hypothesis",
+      "body_lengths": [11],
+      "notes": "One sample appeared 1.450 seconds after the end marker of a short labelled quest auto-navigation run. It was absent at movement onset, so it is not required to start the observed movement stream. A repeat with separate arrival, manual cancel, and quest-selection markers is required to distinguish a navigation-arrival event from unrelated quest state.",
+      "fields": [
+        {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
+        {"offset": 2, "type": "bytes[9]", "name": "opaque_payload", "status": "observed in one sample"}
       ]
     },
     {

@@ -35,6 +35,7 @@ Snapshot date: `2026-10-10`; client revisions:
 | `01 36` | `0x3601` | world | C2S | `CLIENT_TIME` | 159,676 | 10 | locally-confirmed |
 | `01 37` | `0x3701` | world | C2S | `CLIENT_MOVEMENT_UPDATE` | 5,198 | 29, 30 | inferred |
 | `01 61` | `0x6101` | world | S2C | `DUNGEON_RESULT` | — | — | parser-based |
+| `01 90` | `0x9001` | world | C2S | `CLIENT_PERIODIC_VALUE_0190` | 10 | 6 | observed |
 | `01 91` | `0x9101` | world | S2C | `NPC_BROADCAST` | — | — | parser-based |
 | `02 36` | `0x3602` | world | C2S | `CLIENT_PERIODIC_TELEMETRY` | 858 | 11 | hypothesis |
 | `02 37` | `0x3702` | world | C2S | `CLIENT_AIRBORNE_TRANSITION` | 103 | 40, 41 | locally-confirmed |
@@ -97,6 +98,7 @@ Snapshot date: `2026-10-10`; client revisions:
 | `40 8D` | `0x8D40` | world | C2S | `CLIENT_ZLIB_BLOB` | 16 | 1358, 1361, 1362, 1364 | locally-confirmed |
 | `41 36` | `0x3641` | world | S2C | `SPAWN_OR_SUMMON` | — | — | publicly-confirmed |
 | `42 36` | `0x3642` | world | S2C | `ENTITY_REMOVE_OR_DEATH` | — | — | publicly-confirmed |
+| `42 8D` | `0x8D42` | world | C2S | `CLIENT_QUEST_AUTONAV_CANDIDATE` | — | 11 | hypothesis |
 | `44 36` | `0x3644` | world | S2C | `PLAYER_INFO_VARIANT` | — | — | parser-based |
 | `45 36` | `0x3645` | world | S2C | `PLAYER_INFO` | — | — | publicly-confirmed |
 | `51 36` | `0x3651` | world | C2S | `CLIENT_STARTUP_FLOAT_51` | 77 | 6 | observed |
@@ -121,7 +123,6 @@ Snapshot date: `2026-10-10`; client revisions:
 | `44 8A` | `0x8A44` | 11 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
 | `48 36` | `0x3648` | 11 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
 | `A0 FF` | `0xFFA0` | 11 | 21 | Observed after successful RC4 decryption; semantics not assigned. |
-| `01 90` | `0x9001` | 10 | 6 | Observed after successful RC4 decryption; semantics not assigned. |
 | `12 56` | `0x5612` | 10 | 10 | Observed after successful RC4 decryption; semantics not assigned. |
 | `48 E3` | `0xE348` | 7 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
 | `4D E3` | `0xE34D` | 7 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
@@ -169,7 +170,7 @@ Regular server timestamp packet.
 
 ### `00 37` — `CLIENT_MOVEMENT_UPDATE_VARIANT`
 
-Shares the same position, movement-heading, facing-heading, mode, and timestamp layout as 01 37, but occurs much less often and commonly follows movement-skill sequences. The compressed heading decodes as value * 360 / 65536 degrees; divergence from the float heading is consistent with movement direction differing from facing direction.
+Shares the same position, movement-heading, facing-heading, mode, and timestamp layout as 01 37, but occurs much less often and commonly follows movement-skill sequences. A marked quest auto-navigation run began with this form, continued through 20 ordinary 01 37 updates, and ended with another 00 37 plus action-position snapshots; no dedicated navigation movement family appeared. The compressed heading decodes as value * 360 / 65536 degrees; divergence from the float heading is consistent with movement direction differing from facing direction.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
@@ -221,7 +222,7 @@ A newly sampled client timestamp, not an exact echo of the preceding server tick
 
 ### `01 37` — `CLIENT_MOVEMENT_UPDATE`
 
-High-frequency movement update. The 30-byte moving form uses flags 0x02 and carries movement_mode 0x01. A controlled capture added a 29-byte flags-0x00 stop/idle form without movement_mode. The compressed heading decodes as value * 360 / 65536 degrees; its occasional divergence from the float heading is consistent with strafing or backwards movement.
+High-frequency movement update. The 30-byte moving form uses flags 0x02 and carries movement_mode 0x01. A controlled capture added a 29-byte flags-0x00 stop/idle form without movement_mode. A marked quest auto-navigation run emitted 20 moving forms at approximately 10 Hz, showing that server-visible auto-navigation uses the ordinary ground-movement stream. The compressed heading decodes as value * 360 / 65536 degrees; its occasional divergence from the float heading is consistent with strafing or backwards movement.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
@@ -232,6 +233,15 @@ High-frequency movement update. The 30-byte moving form uses flags 0x02 and carr
 | 17 | `f32le` | `facing_heading_degrees` | inferred |
 | 21 | `u8` | `optional_movement_mode` | 0x01 in the 30-byte flags-0x02 form; absent from the 29-byte flags-0x00 form |
 | body_end-8 | `u64le` | `client_unix_ms` | confirmed |
+
+### `01 90` — `CLIENT_PERIODIC_VALUE_0190`
+
+Three timestamped samples carried the same u32le value. Two samples from an earlier capture were 29.143 seconds apart; a third happened during a marked quest auto-navigation run. The earlier cadence shows that the navigation overlap is incidental rather than evidence of a navigation command.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `u32le` | `periodic_value` | observed; invariant in three timestamped samples |
 
 ### `02 36` — `CLIENT_PERIODIC_TELEMETRY`
 
@@ -274,7 +284,7 @@ Six samples at approximately 10 Hz described an isolated stationary jump, and a 
 
 ### `04 37` — `CLIENT_TIMESTAMP_MARKER_04`
 
-Timestamp-only family-37 marker observed near movement and skill transitions. Its exact application meaning and distinction from 05 37 remain open.
+Timestamp-only family-37 marker observed near movement and skill transitions. A marked quest auto-navigation run placed it eight milliseconds after the first 00 37 movement update, but earlier Dodge/skill and gathering sequences show that it is not navigation-specific. Its exact application meaning and distinction from 05 37 remain open.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
@@ -283,7 +293,7 @@ Timestamp-only family-37 marker observed near movement and skill transitions. It
 
 ### `05 37` — `CLIENT_TIMESTAMP_MARKER_05`
 
-Timestamp-only family-37 marker observed near movement and skill transitions. Its exact application meaning and distinction from 04 37 remain open.
+Timestamp-only family-37 marker observed near movement and skill transitions. A marked quest auto-navigation run placed it after the final action-position snapshots, but earlier flight and gathering sequences show that it is not navigation-specific. Its exact application meaning and distinction from 04 37 remain open.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
@@ -592,6 +602,15 @@ Carries a zlib stream that expands to UTF-16LE JSON-like configuration content.
 | 2 | `uvarint` | `compressed_blob_length` | confirmed |
 | 2+uvarint_width | `u32le` | `plain_size` | confirmed |
 | 6+uvarint_width | `zlib[remaining]` | `compressed_payload` | confirmed |
+
+### `42 8D` — `CLIENT_QUEST_AUTONAV_CANDIDATE`
+
+One sample appeared 1.450 seconds after the end marker of a short labelled quest auto-navigation run. It was absent at movement onset, so it is not required to start the observed movement stream. A repeat with separate arrival, manual cancel, and quest-selection markers is required to distinguish a navigation-arrival event from unrelated quest state.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `bytes[9]` | `opaque_payload` | observed in one sample |
 
 ### `51 36` — `CLIENT_STARTUP_FLOAT_51`
 
