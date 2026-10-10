@@ -721,24 +721,27 @@ third attempts but was absent from the second, so it is recorded as a
 conditional gather follow-up rather than a mandatory completion packet. The
 specific resource ID remains only in the ignored local event log.
 
-A first labelled loot-collection test emitted exactly one non-periodic C2S
-packet in a 45-second action window:
+Four labelled successful loot-collection tests each emitted exactly one
+`20 56` packet, 0.742-1.606 seconds after the corresponding marker. A fifth
+labelled attempt emitted none, providing a negative control for an unsuccessful
+or empty interaction:
 
 ```text
 20 56
 request_flags:u8
-loot_context_id:u32le
-loot_object_id:u32le
+loot_reference_a:u32le
+loot_reference_b:u32le
 trailing_flags:u8
 ```
 
-Two additional retained `20 56` samples have the same 12-byte shape: one
-occurred earlier in the same live world session during combat, and one came
-from an independent session. The two current-session samples share the first
-`u32le` value while the second differs; both values differ in the older
-session. This supports a stable actor/session context followed by a lootable
-object reference, but those field names remain inferred until another labelled
-loot action uses a different object.
+Two additional retained samples reproduce the same 12-byte shape: one occurred
+earlier in the live world session during combat, and one came from an
+independent session. Across the six inspected packets, the flags are always
+`01` and the trailing byte is always zero. The first `u32le` reference repeated
+in two samples and otherwise varied; the second was distinct in all six. The
+repeated labelled actions confirm `20 56` as the client loot request, while the
+two reference roles remain open pending correlation with the matching S2C
+object or inventory records.
 
 Dodge provides a second independently structured sequence. All retained
 `0E 37` packets use skill `15000100` or variant `15000101`; the public skill
@@ -1042,9 +1045,10 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
   boundaries and emitted no dedicated route-start request. A coincident
   `01 90` packet was excluded as periodic, while the post-arrival `42 8D`
   sample remains a candidate pending arrival/cancel controls.
-- Isolated a first labelled loot-collection action. Its 45-second window
-  contained only one non-periodic `20 56` packet; two older samples reproduce
-  the 12-byte layout and suggest separate context and loot-object identifiers.
+- Repeated labelled loot collection four times. Every successful action
+  emitted exactly one `20 56`; an unsuccessful or empty fifth attempt emitted
+  none. Two older samples reproduce its fixed 12-byte layout, promoting the
+  opcode meaning to locally confirmed while leaving its two references open.
 
 ### October 9, 2026
 

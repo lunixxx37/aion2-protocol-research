@@ -79,7 +79,7 @@ Snapshot date: `2026-10-10`; client revisions:
 | `1C 37` | `0x371C` | world | S2C | `MOVEMENT_C` | — | — | parser-based |
 | `1D 37` | `0x371D` | world | S2C | `MOVEMENT_RELATED` | — | — | parser-based |
 | `1D 38` | `0x381D` | world | C2S | `CLIENT_LOCATION_SKILL_FOLLOWUP` | 51 | 13 | hypothesis |
-| `20 56` | `0x5620` | world | C2S | `CLIENT_LOOT_REQUEST` | 2 | 12 | inferred |
+| `20 56` | `0x5620` | world | C2S | `CLIENT_LOOT_REQUEST` | 2 | 12 | locally-confirmed |
 | `23 36` | `0x3623` | world | S2C | `ZONE` | — | — | parser-based |
 | `2A 38` | `0x382A` | world | S2C | `STATUS_APPLY` | — | — | parser-based |
 | `2B 38` | `0x382B` | world | S2C | `STATUS_APPLY_VARIANT` | — | — | parser-based |
@@ -540,15 +540,15 @@ A fixed 13-byte packet repeatedly follows 1A 38. Its u32 at offset 7 is skill va
 
 ### `20 56` — `CLIENT_LOOT_REQUEST`
 
-A labelled loot-collection action emitted exactly one non-periodic C2S packet in a 45-second window. Two additional retained samples use the same shape: one occurred earlier in the same live world session during combat, and one came from an independent session. The two current-session samples share the first u32le value while their second u32le values differ, consistent with a stable actor or session context followed by the lootable object reference. A second labelled loot action with a different object is still needed to confirm the field roles.
+Four labelled successful loot-collection actions each emitted exactly one 20 56 packet, 0.742-1.606 seconds after their markers. A fifth labelled attempt emitted none, providing a useful negative control for an unsuccessful or empty interaction. Two additional retained samples reproduce the 12-byte shape, including one from an independent session. This confirms the opcode meaning, but not the roles of its two u32le references: the first repeated in two samples and otherwise varied, while the second was distinct in all six inspected packets.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
 | 0 | `bytes[2]` | `opcode` | confirmed |
-| 2 | `u8` | `request_flags` | observed; 0x01 in three inspected samples |
-| 3 | `u32le` | `loot_context_id` | inferred; stable across two samples in the same live world session |
-| 7 | `u32le` | `loot_object_id` | inferred; distinct across three inspected samples |
-| 11 | `u8` | `trailing_flags` | observed; zero in three inspected samples |
+| 2 | `u8` | `request_flags` | observed; 0x01 in six inspected samples |
+| 3 | `u32le` | `loot_reference_a` | observed; exact role open, repeated in two samples and otherwise varied |
+| 7 | `u32le` | `loot_reference_b` | observed; exact role open, distinct in six inspected samples |
+| 11 | `u8` | `trailing_flags` | observed; zero in six inspected samples |
 
 ### `30 38` — `CLIENT_SKILL_TARGET_CONTEXT`
 
