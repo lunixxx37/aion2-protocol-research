@@ -137,6 +137,11 @@ with `Ctrl+C`. If the fast owner-arena profile misses, the monitor performs one
 validated full-memory lookup after four fast misses and then caches the two
 state addresses. Disable that behavior with `--no-full-scan-fallback`.
 
+Start the monitor from an elevated shell when the game process requires it.
+The monitor reports a Win32 access failure even with `--quiet` when it sees the
+world socket but cannot open the owning process; a silent waiting state then
+means that no matching world connection is present yet.
+
 The revision-3527 fast path was measured across ten repeated runs after an
 independent restart at 269-297 ms internally and 348-385 ms including Python
 startup. It derives the RC4 and network-owner vtables from runtime code, locates
@@ -144,10 +149,12 @@ the current owner without a fixed heap offset, and requires two valid RC4
 permutations carrying the same 214-byte key. A standalone client already owns
 its generated key and skips runtime recovery entirely. RSA/BIGNUM recovery
 remains available in the repository for an older capture whose live session
-state is no longer available. Cached monitor polls averaged 0.55 ms. One
-revision-3527 allocation that missed the fast owner profile completed the
-automatic fallback in 2.08 seconds; its following direct-state checks returned
-to sub-millisecond reads.
+state is no longer available. Cached monitor polls averaged 0.55 ms. Fallback
+time varies with the active allocation. A small revision-3527 case completed in
+2.08 seconds. A later 12.99-GB scan took 84.87 seconds before optimization;
+prioritizing 64-KiB allocator regions and coalescing adjacent reads reduced the
+same live-session scan to 6.83 seconds and 2.44 GB. Its following direct-state
+checks return to sub-millisecond reads.
 
 Every file below `artifacts/`, except its README, is ignored by Git. Handshake
 reports and plaintext samples may contain session values.

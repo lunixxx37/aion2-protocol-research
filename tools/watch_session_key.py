@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -282,6 +283,7 @@ def main() -> int:
 
     context: dict | None = None
     last_key_hash: str | None = None
+    last_discovery_error: str | None = None
     polls = 0
     events = 0
     poll_timings: list[float] = []
@@ -308,8 +310,17 @@ def main() -> int:
                         args.full_scan_fallback,
                         args.fallback_after_misses,
                     )
-                except SystemExit:
+                    last_discovery_error = None
+                except SystemExit as error:
                     context = None
+                    message = str(error)
+                    if connected_pids and message != last_discovery_error:
+                        print(
+                            f"session-key watcher: {message}",
+                            file=sys.stderr,
+                            flush=True,
+                        )
+                    last_discovery_error = message
 
             if context is not None:
                 session_started = time.perf_counter()

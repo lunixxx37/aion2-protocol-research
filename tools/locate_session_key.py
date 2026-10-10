@@ -50,8 +50,6 @@ AF_INET = 2
 MIB_TCP_STATE_ESTABLISHED = 5
 TCP_TABLE_OWNER_PID_ALL = 5
 ERROR_INSUFFICIENT_BUFFER = 122
-PREFERRED_HEAP_START = 0
-PREFERRED_HEAP_END = 0x1_0000_0000
 OWNER_ARENA_START = 0x2_0000_0000
 OWNER_ARENA_END = 0x3_0000_0000
 OWNER_REGION_SIZE = 0x10000
@@ -309,9 +307,15 @@ def discover_world_pid(remote_port: int, process_name: str) -> tuple[int, dict]:
         if module["name"].lower() == process_name.lower():
             matches.append(pid)
     if len(matches) != 1:
+        failures = [
+            f"PID {item['pid']}: {item['error']}"
+            for item in inspected
+            if "error" in item
+        ]
+        detail = f"; inspection failed for {'; '.join(failures)}" if failures else ""
         raise SystemExit(
             f"expected one established {process_name} connection to remote port "
-            f"{remote_port}, found {len(matches)}"
+            f"{remote_port}, found {len(matches)}{detail}"
         )
     return matches[0], {
         "method": "GetExtendedTcpTable",
@@ -369,6 +373,17 @@ def iter_region_chunks(
             offset += len(block)
         if region_read:
             stats["regions_read"] += 1
+
+
+def coalesce_regions(regions: list[dict]) -> list[dict]:
+    """Merge adjacent readable scan regions to reduce ReadProcessMemory calls."""
+    merged: list[dict] = []
+    for region in sorted(regions, key=lambda item: item["base"]):
+        if merged and merged[-1]["base"] + merged[-1]["size"] == region["base"]:
+            merged[-1]["size"] += region["size"]
+        else:
+            merged.append({"base": region["base"], "size": region["size"]})
+    return merged
 
 
 RC4_CONSTRUCTOR_PATTERN = re.compile(
@@ -618,14 +633,19 @@ def locate_states(
         for region in reader.regions()
         if writable_private_region(region) and region["size"] <= max_region
     ]
-    regions.sort(
-        key=lambda region: (
-            not (PREFERRED_HEAP_START <= region["base"] < PREFERRED_HEAP_END),
-            region["base"],
-        )
+    allocator_regions = [
+        region for region in regions if region["size"] == OWNER_REGION_SIZE
+    ]
+    other_regions = [
+        region for region in regions if region["size"] != OWNER_REGION_SIZE
+    ]
+    scan_regions = coalesce_regions(allocator_regions) + coalesce_regions(
+        other_regions
     )
     stats = {
         "regions_considered": len(regions),
+        "allocator_regions_prioritized": len(allocator_regions),
+        "scan_spans": len(scan_regions),
         "regions_read": 0,
         "bytes_read": 0,
         "read_failures": 0,
@@ -637,7 +657,7 @@ def locate_states(
     seen_addresses: set[int] = set()
     grouped_addresses: dict[str, list[int]] = {}
     for block_base, block in iter_region_chunks(
-        reader, regions, chunk_size, len(pointer) - 1, stats
+        reader, scan_regions, chunk_size, len(pointer) - 1, stats
     ):
         cursor = 0
         while True:

@@ -256,7 +256,7 @@ once and in order. A reconnect creates a fresh RSA pair and fresh RC4 state.
 
 ### 5.6 First encrypted client packet
 
-The first RC4-encrypted C2S body in all five decoded world sessions is `13 36`.
+The first RC4-encrypted C2S body in all six decoded world sessions is `13 36`.
 Its confirmed byte grammar is:
 
 ```text

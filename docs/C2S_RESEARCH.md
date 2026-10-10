@@ -230,9 +230,10 @@ The latest reproducible snapshot is:
 | revision 3527, controlled actions | 2,242 | 28,520 | 1,950 |
 | revision 3527, isolated jump | 735 | 9,011 | 694 |
 | revision 3527, controlled actions II | 3,309 | 38,100 | 3,076 |
-| **total** | **161,679** | **1,818,775** | **150,027** |
+| revision 3527, special movement | 10,499 | 131,302 | 9,649 |
+| **total** | **172,178** | **1,950,077** | **159,676** |
 
-All five streams remained aligned to the last complete captured frame without
+All six streams remained aligned to the last complete captured frame without
 manual resynchronization. The sessions used different RSA moduli and OAEP
 secrets, establishing that no earlier-session constant leaked into the method.
 
@@ -285,7 +286,7 @@ construction.
 
 ### 5.1 Startup sequence
 
-All five decoded world sessions begin with the same packet pattern:
+All six decoded world sessions begin with the same packet pattern:
 
 ```text
 13 36 || session/setup payload    # first RC4 body, observed length 158
@@ -295,7 +296,7 @@ All five decoded world sessions begin with the same packet pattern:
 ...
 ```
 
-All five decoded `13 36` bodies have the same 158-byte layout:
+All six decoded `13 36` bodies have the same 158-byte layout:
 
 ```text
 13 36
@@ -316,7 +317,7 @@ stable_identifier ':' connection_identifier 00
 ```
 
 Both decoded identifiers are 36-character UUID strings. The first remained
-constant across all five samples, while the second changed in every world
+constant across all six samples, while the second changed in every world
 session. The UUID within `primary_identifier` had an intermediate lifetime: it
 was shared by the first two samples and changed in the later captures. These
 variation-based names are intentionally neutral; none establishes whether a
@@ -414,8 +415,8 @@ Several useful structural observations are already reproducible:
   byte. This is consistent with ten-second monotonic telemetry, but the clock
   source and final-byte meaning remain open.
 - `04 37` and `05 37` are timestamp-only markers with the exact layout
-  `opcode:bytes[2] || client_unix_ms:u64le`. All 29 and 27 bodies respectively
-  in the five-session snapshot are exactly 10 bytes long, and every retained
+  `opcode:bytes[2] || client_unix_ms:u64le`. All 35 and 33 bodies respectively
+  in the six-session snapshot are exactly 10 bytes long, and every retained
   plaintext value matches the packet timeline. Both occur near movement and
   skill transitions; their exact semantic distinction remains open.
 - Sampled `3A 38` and `3C 38` packets are opcode-only.
@@ -559,7 +560,7 @@ Hellfire-only capture separates button press, cast completion, impact, and
 cancellation.
 
 Two opcode-only packets form another repeatable skill-request boundary. The
-five-session snapshot contains exactly 870 instances each of `3A 38` and
+six-session snapshot contains exactly 870 instances each of `3A 38` and
 `3C 38`. Four controlled pairs bracketed Flame Arrow, Blaze, Bittercold Wind,
 and Firestorm requests:
 
@@ -635,6 +636,25 @@ those standard actions. The previously observed marker payload layouts remain
 valid, while their state-specific trigger remains open. The still-unmapped
 `07 37`, `0B 37`, and `13 37` packets were also absent, indicating that this
 routine movement/combat matrix does not trigger their underlying states.
+
+The sixth session added 10,499 frames and 131,302 RC4 body bytes. Its capture
+contained three world handshakes; selecting the handshake that matched the
+recovered live key produced 9,649 valid `01 36` time packets and a continuous
+decrypt with no read error. The earlier activity included an event, so the
+controlled eight-jump sequence was used as the reliable boundary. Those eight
+jumps produced exactly 16 `02 37` transitions and 54 `03 37` updates in a
+9.5-second cluster.
+
+After that marker, the capture exposed two previously unmapped movement
+families. Two `0C 37` transitions enclosed ten `0D 37` position updates, while
+two `0A 37` transitions began a 126-sample `0B 37` movement run. An earlier
+event-period run contributed another two `0A 37` transitions and 20 `0B 37`
+updates. The capture also contained one `10 37` boundary paired with four
+`11 37` updates and one timestamp-free `19 37` packet immediately before the
+first `0A 37` / `0B 37` run. Their position, vector, heading, mode, and client
+timestamp fields are now recorded in `opcodes.json`. Auto-navigation, riding,
+ordinary movement, and Dodge overlapped in the user-observed order, so the
+application-level meanings remain deliberately neutral pending isolated tests.
 
 ### 5.5 Offline command
 
@@ -753,12 +773,21 @@ a 30-poll live test, automatic discovery and the initial key event completed in
 readiness is therefore bounded mainly by one poll interval plus the initial
 profile lookup rather than a whole-memory scan.
 
-One later revision-3527 allocation placed the validated RC4 states outside the
-profiled owner arena. The fallback located the matching pair after reading the
-writable private-memory candidates in 2.08 seconds. The monitor now invokes
-that fallback once after four fast misses and caches the two validated state
-addresses; subsequent direct-state checks return to sub-millisecond reads.
-`--no-full-scan-fallback` disables this automatic monitor behavior.
+Later revision-3527 allocations placed the validated RC4 states outside the
+profiled owner arena. A small fallback case located the pair in 2.08 seconds.
+A much larger allocation originally required 84.87 seconds and 12.99 GB of
+reads. Prioritizing 64-KiB allocator regions and coalescing adjacent readable
+ranges reduced the same live-session fallback to 6.83 seconds and 2.44 GB.
+The monitor invokes this validated fallback once after four fast misses and
+caches the two state addresses; subsequent direct-state checks return to
+sub-millisecond reads. The fallback itself is therefore a seconds-scale path,
+not a millisecond path. `--no-full-scan-fallback` disables this behavior.
+
+The monitor must have sufficient rights to open the process. In the large
+fallback case it had originally been started without elevation, so it could
+observe the world socket but could not read the owning process. It now reports
+that Win32 access error even under `--quiet`, rather than looking like a slow
+key search.
 
 A standalone protocol client has a different lifecycle: it generates and owns
 its private key before sending `10 36`, so key availability is immediate and
@@ -796,6 +825,20 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
 
 ## 9. Research log
 
+### October 10, 2026
+
+- Fully decoded a sixth independently keyed session, bringing the retained
+  snapshot to 172,178 frames and 1,950,077 encrypted body bytes.
+- Used an eight-jump marker to separate controlled movement from preceding
+  event traffic, then documented the `0A 37` / `0B 37`, `0C 37` / `0D 37`,
+  `10 37` / `11 37`, and `19 37` layouts without assigning premature action
+  names.
+- Prioritized 64-KiB allocator regions and coalesced adjacent reads in the
+  full-memory state fallback, reducing the largest measured live case from
+  84.87 seconds and 12.99 GB to 6.83 seconds and 2.44 GB.
+- Made connection and process-access failures visible even in quiet monitor
+  mode, including the elevation mismatch that invalidated the initial timing.
+
 ### October 9, 2026
 
 - Inspected the packed PE layout: seven `.ncg*` sections and near-uniform main
@@ -829,8 +872,7 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
 - Implemented `decrypt_c2s_rc4.py` with TCP reassembly, modulus-based flow
   selection, continuous body-only RC4, opcode statistics, and per-opcode
   samples.
-- Fully decoded five independently keyed sessions, totaling 161,679 frames
-  and 1,818,775 encrypted body bytes in the latest snapshot.
+- Fully decoded the first five independently keyed sessions.
 - Added capture timestamps and opcode filters to focused C2S sampling, then
   mapped movement coordinates, client timestamps, jump transitions, skill IDs,
   and the repeated Dodge request/movement sequence in families `37` and `38`.

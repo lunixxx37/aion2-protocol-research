@@ -36,8 +36,8 @@ RC4 key.
 
 RC4 is continuous across every post-handshake C2S frame body. The outer
 unsigned-varint length remains clear and consumes no keystream. This model was
-validated over more than 161,000 frames and 1.8 million encrypted body bytes
-across five independently keyed world sessions.
+validated over more than 172,000 frames and 1.9 million encrypted body bytes
+across six independently keyed world sessions.
 
 ## Documentation
 
@@ -170,6 +170,9 @@ python tools/watch_session_key.py `
 Stop it with `Ctrl+C`. The default 250 ms poll interval can be changed with
 `--poll-interval`. The event report contains only the key fingerprint and
 runtime metadata; the raw 214-byte key is written only to `--key-out`.
+Run the monitor from an elevated shell when the game process requires it. If a
+world socket exists but process access fails, the monitor now emits the Win32
+access error even in quiet mode instead of waiting silently.
 
 The JSON report contains key hashes and structural validation, not the key
 bytes. `--key-out` is optional and writes the raw key only to the specified
@@ -194,6 +197,11 @@ standalone locator keeps its broader search opt-in through
 `--full-scan-fallback`. The monitor automatically performs that validated
 fallback once if the allocator-specific fast profile misses, then caches the
 two discovered state addresses; use `--no-full-scan-fallback` to disable it.
+Fallback latency depends on the client's current allocation size. Prioritizing
+64-KiB allocator regions and coalescing adjacent reads reduced the largest
+measured revision-3527 case from 84.87 seconds and 12.99 GB read to 6.83
+seconds and 2.44 GB read. Cached checks remain sub-millisecond; the fallback is
+not a millisecond path.
 
 ## Original-client RSA recovery fallback
 

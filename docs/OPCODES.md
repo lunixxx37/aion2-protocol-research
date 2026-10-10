@@ -8,11 +8,11 @@ evidence, not as proof of packet meaning.
 
 ## Capture snapshot
 
-The local C2S snapshot combines **5** independently keyed
-world sessions, **161,679** decrypted frames, and
-**1,818,775** RC4 body bytes. It contains
-**150,027** confirmed `01 36` time packets.
-Snapshot date: `2026-10-09`; client revisions:
+The local C2S snapshot combines **6** independently keyed
+world sessions, **172,178** decrypted frames, and
+**1,950,077** RC4 body bytes. It contains
+**159,676** confirmed `01 36` time packets.
+Snapshot date: `2026-10-10`; client revisions:
 `3526`, `3527`.
 
 ## Mapped opcodes
@@ -27,39 +27,46 @@ Snapshot date: `2026-10-09`; client revisions:
 | `0D 39` | `0x390D` | lobby | S2C | `LOBBY_JOIN` | — | — | parser-based |
 | `0F 39` | `0x390F` | lobby | S2C | `LOBBY_WORLD_REDIRECT` | — | — | publicly-confirmed |
 | `00 36` | `0x3600` | world | S2C | `SERVER_TICK` | — | 10 | locally-confirmed |
-| `00 37` | `0x3700` | world | C2S | `CLIENT_MOVEMENT_UPDATE_VARIANT` | 390 | 30 | inferred |
-| `00 38` | `0x3800` | world | C2S | `CLIENT_SKILL_REQUEST` | 972 | 36, 37, 38, 43, 44, 45, 47, 48, 49 | inferred |
+| `00 37` | `0x3700` | world | C2S | `CLIENT_MOVEMENT_UPDATE_VARIANT` | 411 | 30 | inferred |
+| `00 38` | `0x3800` | world | C2S | `CLIENT_SKILL_REQUEST` | 976 | 36, 37, 38, 43, 44, 45, 47, 48, 49 | inferred |
 | `00 61` | `0x6100` | world | S2C | `DUNGEON_RUN_STATE` | — | — | parser-based |
 | `00 8D` | `0x8D00` | world | S2C | `HP_UPDATE` | — | — | parser-based |
-| `01 36` | `0x3601` | world | C2S | `CLIENT_TIME` | 150,027 | 10 | locally-confirmed |
-| `01 37` | `0x3701` | world | C2S | `CLIENT_MOVEMENT_UPDATE` | 4,927 | 29, 30 | inferred |
+| `01 36` | `0x3601` | world | C2S | `CLIENT_TIME` | 159,676 | 10 | locally-confirmed |
+| `01 37` | `0x3701` | world | C2S | `CLIENT_MOVEMENT_UPDATE` | 5,198 | 29, 30 | inferred |
 | `01 61` | `0x6101` | world | S2C | `DUNGEON_RESULT` | — | — | parser-based |
 | `01 91` | `0x9101` | world | S2C | `NPC_BROADCAST` | — | — | parser-based |
-| `02 36` | `0x3602` | world | C2S | `CLIENT_PERIODIC_TELEMETRY` | 804 | 11 | hypothesis |
-| `02 37` | `0x3702` | world | C2S | `CLIENT_JUMP_TRANSITION` | 65 | 40, 41 | inferred |
+| `02 36` | `0x3602` | world | C2S | `CLIENT_PERIODIC_TELEMETRY` | 858 | 11 | hypothesis |
+| `02 37` | `0x3702` | world | C2S | `CLIENT_JUMP_TRANSITION` | 103 | 40, 41 | inferred |
 | `02 38` | `0x3802` | world | S2C | `ACTION_OR_CAST` | — | — | parser-based |
 | `02 97` | `0x9702` | world | S2C | `PARTY_STATE` | — | — | parser-based |
 | `03 36` | `0x3603` | world | S2C | `WORLD_PING` | — | — | parser-based |
-| `03 37` | `0x3703` | world | C2S | `CLIENT_JUMP_MOVEMENT` | 250 | 40 | inferred |
+| `03 37` | `0x3703` | world | C2S | `CLIENT_JUMP_MOVEMENT` | 384 | 40 | inferred |
 | `03 38` | `0x3803` | world | S2C | `NPC_POSITION` | — | — | parser-based |
-| `04 37` | `0x3704` | world | C2S | `CLIENT_TIMESTAMP_MARKER_04` | 29 | 10 | inferred |
+| `04 37` | `0x3704` | world | C2S | `CLIENT_TIMESTAMP_MARKER_04` | 35 | 10 | inferred |
 | `04 38` | `0x3804` | world | S2C | `DIRECT_DAMAGE` | — | — | publicly-confirmed |
 | `04 8D` | `0x8D04` | world | S2C | `NICKNAME_OR_OWNER` | — | — | parser-based |
-| `05 37` | `0x3705` | world | C2S | `CLIENT_TIMESTAMP_MARKER_05` | 27 | 10 | inferred |
+| `05 37` | `0x3705` | world | C2S | `CLIENT_TIMESTAMP_MARKER_05` | 33 | 10 | inferred |
 | `05 38` | `0x3805` | world | S2C | `DAMAGE_OVER_TIME` | — | — | parser-based |
 | `05 E0` | `0xE005` | world | S2C | `GROGGY_OR_GUARD` | — | — | parser-based |
 | `06 38` | `0x3806` | world | S2C | `CAST_END_OR_DEFENSE` | — | — | parser-based |
 | `09 38` | `0x3809` | world | S2C | `SKILL_CAST` | — | — | parser-based |
-| `0E 37` | `0x370E` | world | C2S | `CLIENT_DODGE_REQUEST` | 116 | 61 | inferred |
+| `0A 37` | `0x370A` | world | C2S | `CLIENT_SPECIAL_MOVEMENT_0A_TRANSITION` | 14 | 40, 41 | inferred |
+| `0B 37` | `0x370B` | world | C2S | `CLIENT_SPECIAL_MOVEMENT_0B_UPDATE` | 260 | 39 | inferred |
+| `0C 37` | `0x370C` | world | C2S | `CLIENT_SPECIAL_MOVEMENT_0C_TRANSITION` | 3 | 67 | inferred |
+| `0D 37` | `0x370D` | world | C2S | `CLIENT_SPECIAL_MOVEMENT_0D_UPDATE` | 16 | 29 | inferred |
+| `0E 37` | `0x370E` | world | C2S | `CLIENT_DODGE_REQUEST` | 120 | 61 | inferred |
 | `0E 38` | `0x380E` | world | S2C | `TARGET_SELECTED` | — | — | parser-based |
-| `0F 37` | `0x370F` | world | C2S | `CLIENT_DODGE_MOVEMENT` | 231 | 39, 40 | inferred |
+| `0F 37` | `0x370F` | world | C2S | `CLIENT_DODGE_MOVEMENT` | 239 | 39, 40 | inferred |
 | `10 36` | `0x3610` | world | C2S | `CLIENT_RSA_HANDSHAKE` | — | 283 | locally-confirmed |
-| `10 56` | `0x5610` | world | C2S | `CLIENT_STARTUP_SIGNAL` | 5 | 2 | observed |
+| `10 37` | `0x3710` | world | C2S | `CLIENT_SPECIAL_MOVEMENT_10_BOUNDARY` | 8 | 29 | observed |
+| `10 56` | `0x5610` | world | C2S | `CLIENT_STARTUP_SIGNAL` | 6 | 2 | observed |
 | `11 36` | `0x3611` | world | S2C | `SERVER_RSA_HANDSHAKE` | — | 278 | locally-confirmed |
-| `13 36` | `0x3613` | world | C2S | `CLIENT_SESSION_SETUP` | 5 | 158 | inferred |
+| `11 37` | `0x3711` | world | C2S | `CLIENT_SPECIAL_MOVEMENT_11_UPDATE` | 32 | 29 | observed |
+| `13 36` | `0x3613` | world | C2S | `CLIENT_SESSION_SETUP` | 6 | 158 | inferred |
 | `15 36` | `0x3615` | world | S2C | `LOGIN_OR_SERVER_TRANSFER` | — | 4610 | inferred |
 | `16 36` | `0x3616` | world | S2C | `GAME_SERVER_INFO` | — | — | inferred |
-| `18 37` | `0x3718` | world | C2S | `CLIENT_ACTION_POSITION` | 376 | 28 | inferred |
+| `18 37` | `0x3718` | world | C2S | `CLIENT_ACTION_POSITION` | 411 | 28 | inferred |
+| `19 37` | `0x3719` | world | C2S | `CLIENT_SPECIAL_MOVEMENT_19_PREFIX` | 1 | 27 | hypothesis |
 | `1A 36` | `0x361A` | world | S2C | `NAME_CHECK` | — | — | parser-based |
 | `1A 37` | `0x371A` | world | S2C | `MOVEMENT_A` | — | — | parser-based |
 | `1A 38` | `0x381A` | world | C2S | `CLIENT_LOCATION_SKILL_REQUEST` | 52 | 27 | inferred |
@@ -83,7 +90,7 @@ Snapshot date: `2026-10-09`; client revisions:
 | `3C 38` | `0x383C` | world | C2S | `CLIENT_SKILL_REQUEST_END` | 870 | 2 | inferred |
 | `3D 38` | `0x383D` | world | S2C | `COMBAT_BATCH` | — | — | parser-based |
 | `40 36` | `0x3640` | world | S2C | `SPAWN_VARIANT` | — | — | parser-based |
-| `40 8D` | `0x8D40` | world | C2S | `CLIENT_ZLIB_BLOB` | 12 | 1361, 1362 | locally-confirmed |
+| `40 8D` | `0x8D40` | world | C2S | `CLIENT_ZLIB_BLOB` | 16 | 1358, 1361, 1362, 1364 | locally-confirmed |
 | `41 36` | `0x3641` | world | S2C | `SPAWN_OR_SUMMON` | — | — | publicly-confirmed |
 | `42 36` | `0x3642` | world | S2C | `ENTITY_REMOVE_OR_DEATH` | — | — | publicly-confirmed |
 | `44 36` | `0x3644` | world | S2C | `PLAYER_INFO_VARIANT` | — | — | parser-based |
@@ -93,44 +100,41 @@ Snapshot date: `2026-10-09`; client revisions:
 
 | Wire | LE value | Frames | Sampled body lengths | Notes |
 |---|---|---|---|---|
-| `A1 FF` | `0xFFA1` | 264 | 20, 21 | Not an outer LZ4 marker; compressed outer bodies require FF FF. |
+| `A1 FF` | `0xFFA1` | 282 | 20, 21 | Not an outer LZ4 marker; compressed outer bodies require FF FF. |
 | `07 37` | `0x3707` | 245 | — | Absent from the fifth controlled session covering ordinary movement, jump, target selection, one location-targeted skill, and Dodge. |
 | `13 37` | `0x3713` | 214 | — | Absent from the fifth controlled session covering ordinary movement, jump, target selection, one location-targeted skill, and Dodge. |
 | `17 90` | `0x9017` | 144 | 10 | The three retained plaintext samples were byte-identical. |
-| `0B 37` | `0x370B` | 114 | — | Absent from the fifth controlled session covering ordinary movement, jump, target selection, one location-targeted skill, and Dodge. |
-| `51 36` | `0x3651` | 63 | 6 | Observed after successful RC4 decryption; semantics not assigned. |
+| `51 36` | `0x3651` | 77 | 6 | Observed after successful RC4 decryption; semantics not assigned. |
 | `06 37` | `0x3706` | 28 | — | Observed after successful RC4 decryption; semantics not assigned. |
-| `11 37` | `0x3711` | 28 | — | Observed after successful RC4 decryption; semantics not assigned. |
-| `56 8D` | `0x8D56` | 16 | 4 | Observed after successful RC4 decryption; semantics not assigned. |
+| `00 91` | `0x9100` | 22 | 6 | Observed after successful RC4 decryption; semantics not assigned. |
+| `0B 91` | `0x910B` | 19 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
+| `56 8D` | `0x8D56` | 17 | 4 | Observed after successful RC4 decryption; semantics not assigned. |
+| `59 E2` | `0xE259` | 16 | 440, 632, 648, 1128, 1608 | Observed after successful RC4 decryption; semantics not assigned. |
 | `36 36` | `0x3636` | 14 | 18 | Observed after successful RC4 decryption; semantics not assigned. |
-| `59 E2` | `0xE259` | 12 | 440, 632, 648 | Observed after successful RC4 decryption; semantics not assigned. |
-| `04 8A` | `0x8A04` | 10 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
-| `0A 37` | `0x370A` | 10 | — | Observed after successful RC4 decryption; semantics not assigned. |
+| `04 8A` | `0x8A04` | 12 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
+| `14 E2` | `0xE214` | 12 | 20 | Observed after successful RC4 decryption; semantics not assigned. |
+| `00 43` | `0x4300` | 11 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
+| `02 8A` | `0x8A02` | 11 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
+| `22 36` | `0x3622` | 11 | 62 | Observed after successful RC4 decryption; semantics not assigned. |
+| `44 8A` | `0x8A44` | 11 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
+| `48 36` | `0x3648` | 11 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
+| `A0 FF` | `0xFFA0` | 11 | 21 | Observed after successful RC4 decryption; semantics not assigned. |
+| `01 90` | `0x9001` | 10 | 6 | Observed after successful RC4 decryption; semantics not assigned. |
 | `12 56` | `0x5612` | 10 | 10 | Observed after successful RC4 decryption; semantics not assigned. |
-| `14 E2` | `0xE214` | 10 | 20 | Observed after successful RC4 decryption; semantics not assigned. |
-| `00 43` | `0x4300` | 9 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
-| `02 8A` | `0x8A02` | 9 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
-| `22 36` | `0x3622` | 9 | 62 | Observed after successful RC4 decryption; semantics not assigned. |
-| `44 8A` | `0x8A44` | 9 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
-| `48 36` | `0x3648` | 9 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
-| `A0 FF` | `0xFFA0` | 9 | 21 | Observed after successful RC4 decryption; semantics not assigned. |
-| `00 91` | `0x9100` | 8 | 6 | Observed after successful RC4 decryption; semantics not assigned. |
-| `01 90` | `0x9001` | 8 | — | Observed after successful RC4 decryption; semantics not assigned. |
-| `0B 91` | `0x910B` | 7 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
-| `10 37` | `0x3710` | 7 | — | Observed after successful RC4 decryption; semantics not assigned. |
-| `0D 37` | `0x370D` | 6 | — | Observed after successful RC4 decryption; semantics not assigned. |
-| `48 E3` | `0xE348` | 6 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
-| `A7 56` | `0x56A7` | 6 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
-| `0E 57` | `0x570E` | 5 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
-| `4C 8D` | `0x8D4C` | 5 | 10 | Observed after successful RC4 decryption; semantics not assigned. |
-| `4D E3` | `0xE34D` | 5 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
+| `48 E3` | `0xE348` | 7 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
+| `4D E3` | `0xE34D` | 7 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
+| `A7 56` | `0x56A7` | 7 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
+| `0E 57` | `0x570E` | 6 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
+| `4C 8D` | `0x8D4C` | 6 | 10 | Observed after successful RC4 decryption; semantics not assigned. |
 | `22 8D` | `0x8D22` | 4 | — | Observed after successful RC4 decryption; semantics not assigned. |
+| `89 56` | `0x5689` | 4 | 8 | Observed after successful RC4 decryption; semantics not assigned. |
 | `08 37` | `0x3708` | 3 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `1F 36` | `0x361F` | 3 | 20 | Observed after successful RC4 decryption; semantics not assigned. |
 | `30 8D` | `0x8D30` | 3 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `3D 36` | `0x363D` | 3 | — | Observed after successful RC4 decryption; semantics not assigned. |
-| `89 56` | `0x5689` | 3 | 8 | Observed after successful RC4 decryption; semantics not assigned. |
+| `04 90` | `0x9004` | 2 | 3 | Observed after successful RC4 decryption; semantics not assigned. |
 | `12 37` | `0x3712` | 2 | — | Observed after successful RC4 decryption; semantics not assigned. |
+| `1F 8D` | `0x8D1F` | 2 | 10 | Observed after successful RC4 decryption; semantics not assigned. |
 | `20 56` | `0x5620` | 2 | 12 | Observed after successful RC4 decryption; semantics not assigned. |
 | `2B E3` | `0xE32B` | 2 | 4 | Observed after successful RC4 decryption; semantics not assigned. |
 | `46 56` | `0x5646` | 2 | 15 | Observed after successful RC4 decryption; semantics not assigned. |
@@ -138,13 +142,15 @@ Snapshot date: `2026-10-09`; client revisions:
 | `04 40` | `0x4004` | 1 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
 | `06 8C` | `0x8C06` | 1 | 6 | Observed after successful RC4 decryption; semantics not assigned. |
 | `09 37` | `0x3709` | 1 | — | Observed after successful RC4 decryption; semantics not assigned. |
-| `0C 37` | `0x370C` | 1 | — | Observed after successful RC4 decryption; semantics not assigned. |
+| `0A 92` | `0x920A` | 1 | 12 | Observed after successful RC4 decryption; semantics not assigned. |
 | `12 92` | `0x9212` | 1 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `12 E2` | `0xE212` | 1 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
 | `13 90` | `0x9013` | 1 | 6 | Observed after successful RC4 decryption; semantics not assigned. |
 | `14 57` | `0x5714` | 1 | — | Observed after successful RC4 decryption; semantics not assigned. |
+| `1A 8D` | `0x8D1A` | 1 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
 | `25 92` | `0x9225` | 1 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `32 E2` | `0xE232` | 1 | 6 | Observed after successful RC4 decryption; semantics not assigned. |
+| `36 92` | `0x9236` | 1 | 6 | Observed after successful RC4 decryption; semantics not assigned. |
 | `40 56` | `0x5640` | 1 | 164 | Observed after successful RC4 decryption; semantics not assigned. |
 | `46 E3` | `0xE346` | 1 | 8 | Observed after successful RC4 decryption; semantics not assigned. |
 | `68 8D` | `0x8D68` | 1 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
@@ -275,6 +281,65 @@ Timestamp-only family-37 marker observed near movement and skill transitions. It
 | 0 | `bytes[2]` | `opcode` | confirmed |
 | 2 | `u64le` | `client_unix_ms` | confirmed in every retained plaintext sample |
 
+### `0A 37` — `CLIENT_SPECIAL_MOVEMENT_0A_TRANSITION`
+
+The special-movement capture retained four transition packets across two contiguous 0B 37 movement runs. The 41-byte flags-0x03 form adds marker 0x03 immediately before movement_mode; the 40-byte flags-0x02 form omits it. The exact in-game movement mode remains open.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `u8` | `transition_flags` | observed; 0x02 or 0x03 |
+| 3 | `f32le[3]` | `position_xyz` | confirmed by continuity with 0B 37 |
+| 15 | `f32le[3]` | `movement_vector_xyz` | inferred |
+| 27 | `f32le` | `heading_degrees` | inferred |
+| 31 | `u8` | `optional_transition_marker` | 0x03 in the 41-byte form; absent from the 40-byte form |
+| body_end-9 | `u8` | `movement_mode` | observed; 0x01 in retained samples |
+| body_end-8 | `u64le` | `client_unix_ms` | confirmed |
+
+### `0B 37` — `CLIENT_SPECIAL_MOVEMENT_0B_UPDATE`
+
+High-rate movement stream associated with 0A 37 transitions. Two runs in the special-movement capture lasted approximately 2.1 and 13.7 seconds and showed continuous position, large movement vectors, heading, mode, and client time. The exact in-game movement mode remains open.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `f32le[3]` | `position_xyz` | confirmed |
+| 14 | `f32le[3]` | `movement_vector_xyz` | inferred |
+| 26 | `f32le` | `heading_degrees` | inferred |
+| 30 | `u8` | `movement_mode` | observed; 0x00 or 0x01 |
+| 31 | `u64le` | `client_unix_ms` | confirmed |
+
+### `0C 37` — `CLIENT_SPECIAL_MOVEMENT_0C_TRANSITION`
+
+Two packets in the special-movement capture bracketed a short ten-sample 0D 37 movement run after the controlled eight-jump marker. The four vector triplets form a continuous movement/control-point structure; their exact roles and in-game mode remain open.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `u8` | `transition_flags` | observed; 0x01 in retained samples |
+| 3 | `f32le[3]` | `control_point_0_xyz` | inferred |
+| 15 | `u8` | `control_marker` | observed; 0x03 in retained samples |
+| 16 | `f32le[3]` | `control_point_1_xyz` | inferred |
+| 28 | `f32le[3]` | `control_point_2_xyz` | inferred |
+| 40 | `f32le[3]` | `control_point_3_xyz` | inferred |
+| 52 | `u16le` | `movement_heading_compressed` | inferred; degrees = value * 360 / 65536 |
+| 54 | `f32le` | `facing_heading_degrees` | inferred |
+| 58 | `u8` | `movement_mode` | observed; 0x01 in retained samples |
+| 59 | `u64le` | `client_unix_ms` | confirmed |
+
+### `0D 37` — `CLIENT_SPECIAL_MOVEMENT_0D_UPDATE`
+
+Ten position updates in the special-movement capture occurred between two 0C 37 transition packets. The layout is a flag-free position/heading/mode/time form. The exact in-game movement mode remains open.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `f32le[3]` | `position_xyz` | confirmed |
+| 14 | `u16le` | `movement_heading_compressed` | inferred; degrees = value * 360 / 65536 |
+| 16 | `f32le` | `facing_heading_degrees` | inferred |
+| 20 | `u8` | `movement_mode` | observed; 0x00 in retained samples |
+| 21 | `u64le` | `client_unix_ms` | confirmed |
+
 ### `0E 37` — `CLIENT_DODGE_REQUEST`
 
 Every retained packet carries skill 15000100 or its 15000101 variant; 15000100 is independently catalogued as Dodge. These packets begin a short run of 0F 37 movement samples; separate controlled captures produced two and three samples respectively.
@@ -321,6 +386,19 @@ Clear packet that installs an ephemeral RSA-2048 public key with exponent 3.
 | after constant | `ascii[2]` | `region` | confirmed |
 | body_end-1 | `u8` | `trailing_02` | confirmed |
 
+### `10 37` — `CLIENT_SPECIAL_MOVEMENT_10_BOUNDARY`
+
+In the special-movement capture, the payload after the opcode matched a simultaneous first 11 37 update byte-for-byte; three more 11 37 samples followed. This indicates a movement-mode boundary, but the action occurred before the controlled marker and remains unnamed.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `f32le[3]` | `position_xyz` | confirmed |
+| 14 | `u16le` | `movement_heading_compressed` | inferred; degrees = value * 360 / 65536 |
+| 16 | `f32le` | `facing_heading_degrees` | inferred |
+| 20 | `u8` | `movement_mode` | observed; 0x01 in the retained sample |
+| 21 | `u64le` | `client_unix_ms` | confirmed |
+
 ### `10 56` — `CLIENT_STARTUP_SIGNAL`
 
 Opcode-only packet observed in both initial encrypted sequences; semantics are open.
@@ -343,9 +421,22 @@ The 256-byte block decrypts as RSA-OAEP-SHA1 and yields the complete 214-byte RC
 | 266 | `u64le` | `reserved` | confirmed |
 | 274 | `i32le` | `sentinel_or_result` | confirmed |
 
+### `11 37` — `CLIENT_SPECIAL_MOVEMENT_11_UPDATE`
+
+Four short movement updates in the special-movement capture accompanied one 10 37 boundary packet. The first update had the same post-opcode payload as that boundary. The action occurred before the controlled marker and remains unnamed.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `f32le[3]` | `position_xyz` | confirmed |
+| 14 | `u16le` | `movement_heading_compressed` | inferred; degrees = value * 360 / 65536 |
+| 16 | `f32le` | `facing_heading_degrees` | inferred |
+| 20 | `u8` | `movement_mode` | observed; 0x01 in retained samples |
+| 21 | `u64le` | `client_unix_ms` | confirmed |
+
 ### `13 36` — `CLIENT_SESSION_SETUP`
 
-First encrypted body in all five decoded sessions. The byte layout and Base64 token grammar are locally confirmed. The encoded token is copied from the NC Platform SDK authn_token response field, with -authnToken: supported as an alternate input; the identifier meanings and other value sources remain open. Raw values are excluded.
+First encrypted body in all six decoded sessions. The byte layout and Base64 token grammar are locally confirmed. The encoded token is copied from the NC Platform SDK authn_token response field, with -authnToken: supported as an alternate input; the identifier meanings and other value sources remain open. Raw values are excluded.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
@@ -381,6 +472,17 @@ Position and heading snapshot that frequently appears immediately before 00 38 s
 | 4 | `f32le[3]` | `position_xyz` | confirmed |
 | 16 | `f32le` | `heading_degrees` | inferred |
 | 20 | `u64le` | `client_unix_ms` | confirmed |
+
+### `19 37` — `CLIENT_SPECIAL_MOVEMENT_19_PREFIX`
+
+One timestamp-free position/vector packet immediately preceded the first retained 0A 37 / 0B 37 movement run. Another isolated capture is needed to establish whether it initiates that mode.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `u8` | `prefix_flags` | observed; 0x01 in the retained sample |
+| 3 | `f32le[3]` | `position_xyz` | confirmed by continuity with the following movement run |
+| 15 | `f32le[3]` | `movement_vector_xyz` | inferred |
 
 ### `1A 38` — `CLIENT_LOCATION_SKILL_REQUEST`
 
