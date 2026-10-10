@@ -677,6 +677,13 @@ target immediately before targeted skill requests, while zero was used for an
 untargeted or self-targeted request. The registry therefore distinguishes
 target selection from per-skill target context.
 
+A labelled TAB-targeting test emitted 16 six-byte `33 38` packets selecting six
+distinct mob entity IDs. Repeated IDs showed the client cycling among nearby
+targets, while no other non-time opcode appeared in the 60-second action
+window. TAB therefore has no separate network command in this capture: the
+client resolves the next mob locally and sends the resulting selected entity
+through the normal `33 38` form.
+
 A later labelled test collected the same resource three times at one location.
 All `30 8D` and `3D 36` traffic in that live session was confined to this
 window. Each attempt had the same core sequence:
@@ -968,6 +975,9 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
 - Repeated gathering three times at one resource. This confirmed `30 8D` as
   the gather request, independently reproduced the `33 38` target select/clear
   lifecycle, and identified `3D 36` as a conditional same-resource follow-up.
+- Repeatedly selected nearby mobs with TAB. Sixteen `33 38` packets cycled
+  among six entity IDs without any companion action opcode, establishing that
+  TAB selection is client-side logic followed by the normal target update.
 
 ### October 9, 2026
 

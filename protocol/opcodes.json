@@ -852,7 +852,7 @@
       "encryption": "rc4",
       "confidence": "locally-confirmed",
       "body_lengths": [4, 6],
-      "notes": "Controlled target changes produced 33 38 with the newly selected entity ID, and clearing the target produced a zero reference. A three-action gathering test independently repeated the select/clear pair around every collection attempt; the selected resource ID matched the following 30 8D request. The compact varint explains both observed body lengths.",
+      "notes": "Controlled target changes produced 33 38 with the newly selected entity ID, and clearing the target produced a zero reference. A three-action gathering test independently repeated the select/clear pair around every collection attempt. A labelled TAB-targeting test emitted 16 six-byte 33 38 packets covering six distinct mob IDs and no other action opcode, showing that TAB selection is resolved locally before this selected-entity notification is sent. The compact varint explains both observed body lengths.",
       "fields": [
         {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
         {"offset": 2, "type": "u8", "name": "reference_flags", "status": "observed; zero in retained samples"},

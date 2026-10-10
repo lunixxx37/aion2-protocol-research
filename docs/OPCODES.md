@@ -549,7 +549,7 @@ A controlled test collected the same resource three times. Exactly one 30 8D pac
 
 ### `33 38` — `CLIENT_TARGET_SELECTION`
 
-Controlled target changes produced 33 38 with the newly selected entity ID, and clearing the target produced a zero reference. A three-action gathering test independently repeated the select/clear pair around every collection attempt; the selected resource ID matched the following 30 8D request. The compact varint explains both observed body lengths.
+Controlled target changes produced 33 38 with the newly selected entity ID, and clearing the target produced a zero reference. A three-action gathering test independently repeated the select/clear pair around every collection attempt. A labelled TAB-targeting test emitted 16 six-byte 33 38 packets covering six distinct mob IDs and no other action opcode, showing that TAB selection is resolved locally before this selected-entity notification is sent. The compact varint explains both observed body lengths.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
