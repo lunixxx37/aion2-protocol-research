@@ -90,6 +90,8 @@ def load_opcode_names(path: Path) -> dict[str, str]:
     for item in registry["opcodes"]:
         if "C2S" in item["directions"]:
             names[item["wire"].upper()] = item["name"]
+    for wire in registry["observations"]["world_c2s"]:
+        names.setdefault(wire.upper(), "OBSERVED_C2S")
     return names
 
 
@@ -740,6 +742,7 @@ class OpcodeViewer:
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         self.tree.tag_configure("marker", background="#ffe6a6")
+        self.tree.tag_configure("observed", background="#fff3c4")
         self.tree.tag_configure("unknown", background="#ffd6d6")
         self.tree.tag_configure("session", background="#d9ecff")
         self.tree.bind("<<TreeviewSelect>>", self._show_details)
@@ -819,6 +822,11 @@ class OpcodeViewer:
         self.last_packet_epoch = epoch
         time_text = datetime.fromtimestamp(epoch).astimezone().strftime("%H:%M:%S.%f")[:-3]
         name = self.names.get(opcode, "UNKNOWN_C2S")
+        tag = (
+            "unknown"
+            if name == "UNKNOWN_C2S"
+            else "observed" if name == "OBSERVED_C2S" else ""
+        )
         item = self.tree.insert(
             "",
             "end",
@@ -831,7 +839,7 @@ class OpcodeViewer:
                 event["body_length"],
                 event["preview"],
             ),
-            tags=("unknown",) if name == "UNKNOWN_C2S" else (),
+            tags=(tag,) if tag else (),
         )
         self.packet_events[item] = event
         self._limit_rows()
@@ -889,7 +897,13 @@ class OpcodeViewer:
         self.details.configure(state="disabled")
 
     def add_marker(self) -> None:
-        label = self.marker_text.get().strip() or "unlabeled action"
+        label = self.marker_text.get().strip()
+        if not label:
+            self.messagebox.showinfo(
+                "Action label required",
+                "Enter a short action label before adding the marker.",
+            )
+            return
         event = {
             "kind": "marker",
             "timestamp": time.time(),
@@ -901,6 +915,12 @@ class OpcodeViewer:
         self.marker_text.set("")
 
     def reset_view(self) -> None:
+        if not self.marker_text.get().strip():
+            self.messagebox.showinfo(
+                "Action label required",
+                "Enter the next action label, then click Reset before action.",
+            )
+            return
         for item in self.tree.get_children():
             self.tree.delete(item)
         for item in self.count_tree.get_children():
@@ -968,9 +988,10 @@ def self_test() -> None:
     packets = [event for event in published if event["kind"] == "packet"]
     assert [event["opcode"] for event in packets] == ["1336", "0A37"]
     assert packets[1]["body_length"] == 40
-    assert load_opcode_names(DEFAULT_REGISTRY)["0A37"].startswith(
-        "CLIENT_SPECIAL_MOVEMENT"
-    )
+    names = load_opcode_names(DEFAULT_REGISTRY)
+    assert names["0A37"].startswith("CLIENT_SPECIAL_MOVEMENT")
+    assert names["5136"] == "CLIENT_STARTUP_FLOAT_51"
+    assert names["2236"] == "OBSERVED_C2S"
     print("Aion 2 live opcode viewer self-test: OK")
 
 

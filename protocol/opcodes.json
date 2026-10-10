@@ -139,6 +139,20 @@
       ]
     },
     {
+      "wire": "5136",
+      "phase": "world",
+      "directions": ["C2S"],
+      "name": "CLIENT_STARTUP_FLOAT_51",
+      "encryption": "rc4",
+      "confidence": "observed",
+      "body_lengths": [6],
+      "notes": "A live world-entry validation emitted five samples at approximately one-second intervals with float values 2000, 2500, 3000, 3500, and 3800. The field layout is confirmed; its application meaning remains open.",
+      "fields": [
+        {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
+        {"offset": 2, "type": "f32le", "name": "startup_value", "status": "confirmed structure; semantics unknown"}
+      ]
+    },
+    {
       "wire": "0336",
       "phase": "world",
       "directions": ["S2C"],

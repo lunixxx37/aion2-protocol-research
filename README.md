@@ -78,7 +78,8 @@ The tool requests elevation, starts a filtered `dumpcap` stream, warms the
 runtime key locator, and opens a GUI showing decrypted C2S opcode, registry
 name, body length, inter-packet delay, and a plaintext preview. Regular
 `01 36` time packets are hidden by default. The counts tab makes action bursts
-easy to compare.
+easy to compare. Mapped packets use the normal background, catalogued packets
+whose semantics remain open are yellow, and genuinely new opcodes are red.
 
 If the game was already connected when the viewer started, keep it open while
 the key monitor warms up, then create one new world connection. The viewer

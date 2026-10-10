@@ -95,6 +95,7 @@ Snapshot date: `2026-10-10`; client revisions:
 | `42 36` | `0x3642` | world | S2C | `ENTITY_REMOVE_OR_DEATH` | — | — | publicly-confirmed |
 | `44 36` | `0x3644` | world | S2C | `PLAYER_INFO_VARIANT` | — | — | parser-based |
 | `45 36` | `0x3645` | world | S2C | `PLAYER_INFO` | — | — | publicly-confirmed |
+| `51 36` | `0x3651` | world | C2S | `CLIENT_STARTUP_FLOAT_51` | 77 | 6 | observed |
 
 ## Observed C2S opcodes with open semantics
 
@@ -104,7 +105,6 @@ Snapshot date: `2026-10-10`; client revisions:
 | `07 37` | `0x3707` | 245 | — | Absent from the fifth controlled session covering ordinary movement, jump, target selection, one location-targeted skill, and Dodge. |
 | `13 37` | `0x3713` | 214 | — | Absent from the fifth controlled session covering ordinary movement, jump, target selection, one location-targeted skill, and Dodge. |
 | `17 90` | `0x9017` | 144 | 10 | The three retained plaintext samples were byte-identical. |
-| `51 36` | `0x3651` | 77 | 6 | Observed after successful RC4 decryption; semantics not assigned. |
 | `06 37` | `0x3706` | 28 | — | Observed after successful RC4 decryption; semantics not assigned. |
 | `00 91` | `0x9100` | 22 | 6 | Observed after successful RC4 decryption; semantics not assigned. |
 | `0B 91` | `0x910B` | 19 | 2 | Observed after successful RC4 decryption; semantics not assigned. |
@@ -557,6 +557,15 @@ Carries a zlib stream that expands to UTF-16LE JSON-like configuration content.
 | 2 | `uvarint` | `compressed_blob_length` | confirmed |
 | 2+uvarint_width | `u32le` | `plain_size` | confirmed |
 | 6+uvarint_width | `zlib[remaining]` | `compressed_payload` | confirmed |
+
+### `51 36` — `CLIENT_STARTUP_FLOAT_51`
+
+A live world-entry validation emitted five samples at approximately one-second intervals with float values 2000, 2500, 3000, 3500, and 3800. The field layout is confirmed; its application meaning remains open.
+
+| Offset | Type | Field | Status |
+|---|---|---|---|
+| 0 | `bytes[2]` | `opcode` | confirmed |
+| 2 | `f32le` | `startup_value` | confirmed structure; semantics unknown |
 
 ## Confidence levels
 

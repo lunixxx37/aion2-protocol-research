@@ -296,6 +296,28 @@ All six decoded world sessions begin with the same packet pattern:
 ...
 ```
 
+The live viewer's first validation connection independently reproduced the
+startup and exposed its complete non-time ordering before any labeled gameplay
+action:
+
+```text
+13 36
+A0 FF -> 1F 36 -> 10 56 -> 59 E2 -> 59 E2
+22 36
+4C 8D -> 48 36 -> 02 8A -> 04 8A -> 44 8A -> 00 43
+-> 0E 57 -> 14 E2 -> 48 E3 -> A7 56 -> 56 8D -> 14 E2
+51 36 -> 4D E3 -> 51 36 -> 51 36 -> 51 36 -> 51 36
+```
+
+Regular `01 36` and ten-second `02 36` packets were interleaved. The five
+`51 36` bodies each contain one `f32le` at offset 2. They arrived roughly one
+second apart with values `2000`, `2500`, `3000`, `3500`, and `3800`; the
+application meaning of this startup value remains open. `A1 FF` began about
+20 seconds later and then repeated every 30.002-30.087 seconds, distinguishing
+it as periodic traffic rather than a one-time login action. This live session
+remains outside the fixed six-session corpus snapshot until its capture is
+closed and ingested.
+
 All six decoded `13 36` bodies have the same 158-byte layout:
 
 ```text

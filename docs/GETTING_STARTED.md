@@ -127,6 +127,8 @@ When the status reads `Session #N is decrypting live`:
 event log. The tool writes a timestamped PCAP and JSONL file below
 `artifacts/`; both are ignored by Git and the JSONL may contain decrypted
 packet bodies. The recovered session key is kept only in process memory.
+Mapped packets use the normal background; known observations with open
+semantics are yellow, while opcodes absent from the registry are red.
 
 Run its deterministic stream test without opening the GUI:
 
