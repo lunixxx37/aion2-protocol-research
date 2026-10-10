@@ -721,32 +721,34 @@ third attempts but was absent from the second, so it is recorded as a
 conditional gather follow-up rather than a mandatory completion packet. The
 specific resource ID remains only in the ignored local event log.
 
-Four labelled successful loot tests used the `F` key, which collects all
-available drops from one monster in a single action. Each emitted exactly one
+Four labelled successful loot tests used the `F` key. Each emitted exactly one
 `20 56` packet, 0.742-1.606 seconds after the corresponding marker. At the
 separate `loot 4` marker no loot action occurred and no `20 56` was emitted,
-providing a clean negative control:
+providing a clean negative control. The client collects every lootable object
+in the surrounding area with one key press.
+
+A later controlled comparison resolved the variable-length body. One killed
+monster with one loot result produced a 12-byte packet whose count was one.
+Two killed monsters with one loot result each produced a single 20-byte packet
+whose count was two and which contained two eight-byte records:
 
 ```text
 20 56
-request_flags:u8
-loot_reference_a:u32le
-loot_reference_b:u32le
+loot_target_count:u8
+repeat loot_target_count times:
+    loot_reference_a:u32le
+    loot_reference_b:u32le
 trailing_flags:u8
 ```
 
-Two additional retained samples reproduce the same 12-byte shape: one occurred
-earlier in the live world session during combat, and one came from an
-independent session. Across the six inspected packets, the flags are always
-`01` and the trailing byte is always zero. The first `u32le` reference repeated
-in two samples and otherwise varied; the second was distinct in all six. The
-repeated labelled actions confirm `20 56` as the client loot request, while the
-single-action behavior identifies it more specifically as a monster- or
-loot-container-level loot-all request rather than an individual-item pickup.
-The two reference roles remain open pending correlation with the matching S2C
-object or inventory records. A monster containing multiple drops should still
-produce one request; that controlled case will establish whether item count is
-represented only in the S2C response.
+The total body length is therefore `4 + 8 * loot_target_count`. The count tracks
+nearby loot targets or monsters, not the number of item stacks returned. All
+three target records in the one-versus-two comparison shared the first
+reference and had distinct second references, consistent with a target type or
+context followed by a loot-container instance. Neither reference matched the
+normal `33 38` combat-target entity IDs, so the exact roles remain open pending
+correlation with the matching S2C object or inventory records. A single monster
+with multiple item stacks is still expected to produce count one.
 
 Dodge provides a second independently structured sequence. All retained
 `0E 37` packets use skill `15000100` or variant `15000101`; the public skill
@@ -1052,10 +1054,12 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
   sample remains a candidate pending arrival/cancel controls.
 - Repeated labelled loot collection four times. Every successful action
   emitted exactly one `20 56`; the separate `loot 4` marker with no loot action
-  emitted none. Two older samples reproduce its fixed 12-byte layout, promoting
-  the opcode meaning to locally confirmed. The client action collects all drops
-  from one monster with `F`, identifying this as a loot-all request while
-  leaving its two references open.
+  emitted none. Two older count-one samples reproduce its 12-byte form,
+  promoting the opcode meaning to locally confirmed.
+- Compared one versus two lootable monsters. One `F` press batches every nearby
+  loot target into one `20 56`: count one produced a 12-byte body and count two
+  produced a 20-byte body with two eight-byte records. This confirms the count
+  and record width while leaving the two record references open.
 
 ### October 9, 2026
 

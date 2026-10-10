@@ -79,7 +79,7 @@ Snapshot date: `2026-10-10`; client revisions:
 | `1C 37` | `0x371C` | world | S2C | `MOVEMENT_C` | — | — | parser-based |
 | `1D 37` | `0x371D` | world | S2C | `MOVEMENT_RELATED` | — | — | parser-based |
 | `1D 38` | `0x381D` | world | C2S | `CLIENT_LOCATION_SKILL_FOLLOWUP` | 51 | 13 | hypothesis |
-| `20 56` | `0x5620` | world | C2S | `CLIENT_LOOT_ALL_REQUEST` | 2 | 12 | locally-confirmed |
+| `20 56` | `0x5620` | world | C2S | `CLIENT_LOOT_NEARBY_REQUEST` | 2 | 12, 20 | locally-confirmed |
 | `23 36` | `0x3623` | world | S2C | `ZONE` | — | — | parser-based |
 | `2A 38` | `0x382A` | world | S2C | `STATUS_APPLY` | — | — | parser-based |
 | `2B 38` | `0x382B` | world | S2C | `STATUS_APPLY_VARIANT` | — | — | parser-based |
@@ -538,17 +538,17 @@ A fixed 13-byte packet repeatedly follows 1A 38. Its u32 at offset 7 is skill va
 | 11 | `u8` | `stage_marker` | observed; 0x01 in retained samples |
 | 12 | `u8` | `entity_id_tag_or_mode` | unknown; 0x02 in retained samples |
 
-### `20 56` — `CLIENT_LOOT_ALL_REQUEST`
+### `20 56` — `CLIENT_LOOT_NEARBY_REQUEST`
 
-Four labelled successful F-key actions that collected all available drops from one monster each emitted exactly one 20 56 packet, 0.742-1.606 seconds after their markers. At the separate loot-4 marker no loot action occurred and no 20 56 was emitted, providing a clean negative control. Two additional retained samples reproduce the 12-byte shape, including one from an independent session. This confirms a monster- or loot-container-level loot-all request rather than an individual-item pickup. The roles of its two u32le references remain open: the first repeated in two samples and otherwise varied, while the second was distinct in all six inspected packets.
+The F key collects all lootable objects in the surrounding area. A controlled one-monster action emitted one 12-byte packet with count 1; a two-monster action emitted one 20-byte packet with count 2 and two eight-byte records. The body length therefore follows 4 + 8 * loot_target_count. Earlier labelled successes and a no-action negative control independently bind this opcode to looting. The two record references do not equal the normal 33 38 combat-target entity IDs; their exact roles remain open.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
 | 0 | `bytes[2]` | `opcode` | confirmed |
-| 2 | `u8` | `request_flags` | observed; 0x01 in six inspected samples |
-| 3 | `u32le` | `loot_reference_a` | observed; exact role open, repeated in two samples and otherwise varied |
-| 7 | `u32le` | `loot_reference_b` | observed; exact role open, distinct in six inspected samples |
-| 11 | `u8` | `trailing_flags` | observed; zero in six inspected samples |
+| 2 | `u8` | `loot_target_count` | confirmed by controlled one- and two-monster actions |
+| 3 + i*8 | `u32le` | `loot_reference_a[i]` | observed; candidate target type or context, exact role open |
+| 7 + i*8 | `u32le` | `loot_reference_b[i]` | observed; candidate loot-container instance, distinct per controlled target |
+| body_end-1 | `u8` | `trailing_flags` | observed; zero in retained samples |
 
 ### `30 38` — `CLIENT_SKILL_TARGET_CONTEXT`
 
