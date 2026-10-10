@@ -722,9 +722,9 @@ conditional gather follow-up rather than a mandatory completion packet. The
 specific resource ID remains only in the ignored local event log.
 
 Four labelled successful loot-collection tests each emitted exactly one
-`20 56` packet, 0.742-1.606 seconds after the corresponding marker. A fifth
-labelled attempt emitted none, providing a negative control for an unsuccessful
-or empty interaction:
+`20 56` packet, 0.742-1.606 seconds after the corresponding marker. At the
+separate `loot 4` marker no loot action occurred and no `20 56` was emitted,
+providing a clean negative control:
 
 ```text
 20 56
@@ -1046,9 +1046,10 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
   `01 90` packet was excluded as periodic, while the post-arrival `42 8D`
   sample remains a candidate pending arrival/cancel controls.
 - Repeated labelled loot collection four times. Every successful action
-  emitted exactly one `20 56`; an unsuccessful or empty fifth attempt emitted
-  none. Two older samples reproduce its fixed 12-byte layout, promoting the
-  opcode meaning to locally confirmed while leaving its two references open.
+  emitted exactly one `20 56`; the separate `loot 4` marker with no loot action
+  emitted none. Two older samples reproduce its fixed 12-byte layout, promoting
+  the opcode meaning to locally confirmed while leaving its two references
+  open.
 
 ### October 9, 2026
 

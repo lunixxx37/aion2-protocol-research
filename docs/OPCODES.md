@@ -540,7 +540,7 @@ A fixed 13-byte packet repeatedly follows 1A 38. Its u32 at offset 7 is skill va
 
 ### `20 56` — `CLIENT_LOOT_REQUEST`
 
-Four labelled successful loot-collection actions each emitted exactly one 20 56 packet, 0.742-1.606 seconds after their markers. A fifth labelled attempt emitted none, providing a useful negative control for an unsuccessful or empty interaction. Two additional retained samples reproduce the 12-byte shape, including one from an independent session. This confirms the opcode meaning, but not the roles of its two u32le references: the first repeated in two samples and otherwise varied, while the second was distinct in all six inspected packets.
+Four labelled successful loot-collection actions each emitted exactly one 20 56 packet, 0.742-1.606 seconds after their markers. At the separate loot-4 marker no loot action occurred and no 20 56 was emitted, providing a clean negative control. Two additional retained samples reproduce the 12-byte shape, including one from an independent session. This confirms the opcode meaning, but not the roles of its two u32le references: the first repeated in two samples and otherwise varied, while the second was distinct in all six inspected packets.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
