@@ -25,6 +25,8 @@ python tools/watch_session_key.py `
   --json artifacts\session-key-monitor.json `
   --events-jsonl artifacts\session-key-events.jsonl
 
+python tools/live_opcode_viewer.py
+
 python tools/find_x64_calls.py --pid PROCESS_ID `
   --target 0xRUNTIME_ADDRESS `
   --json artifacts\rsa-private-decrypt-xrefs.json

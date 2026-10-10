@@ -6,7 +6,7 @@ Reproducible research into the Aion 2 network protocol, with a focus on
 client-to-server (C2S), server-to-client (S2C), TCP framing, compressed bundles,
 the RSA world handshake, and the post-handshake C2S cipher.
 
-Research snapshot: **October 9, 2026**, Global client revision `3527`.
+Research snapshot: **October 10, 2026**, Global client revision `3527`.
 
 This is an independent, unofficial project. It is not affiliated with NCSOFT
 or the operators of Aion 2.
@@ -65,6 +65,32 @@ python tools/aion2_client_crypto.py --self-test
 The self-test covers a published RC4 vector, RSA-2048/e=3, PKCS#1 public-key
 DER, OAEP-SHA1, the `10 36`/`11 36` layouts, the `13 36` session-setup codec,
 the AES-256-ECB launcher-parameter decoder, and continuous multi-frame RC4.
+
+## Live opcode viewer
+
+Start the Windows viewer before the next world connection:
+
+```powershell
+python tools/live_opcode_viewer.py
+```
+
+The tool requests elevation, starts a filtered `dumpcap` stream, warms the
+runtime key locator, and opens a GUI showing decrypted C2S opcode, registry
+name, body length, inter-packet delay, and a plaintext preview. Regular
+`01 36` time packets are hidden by default. The counts tab makes action bursts
+easy to compare.
+
+If the game was already connected when the viewer started, keep it open while
+the key monitor warms up, then create one new world connection. The viewer
+needs that connection's clear `10 36` handshake so RC4 starts at byte zero.
+Wait for `Session #N is decrypting live`, enter an action label, click
+`Reset before action`, perform exactly one action, and wait briefly before the
+next marker. This records the label and packets in the same timeline.
+
+The raw PCAP and JSONL event log are stored as timestamped
+`artifacts/live-opcodes-*` files and remain ignored by Git. The session key is
+kept in memory. On systems whose capture adapter has another name, pass it with
+`--interface`.
 
 ## Standalone-client primitives
 

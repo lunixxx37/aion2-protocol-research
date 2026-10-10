@@ -710,6 +710,9 @@ process-memory inspection. It neither injects code nor pauses the process.
   follows it to the two live RC4 states, and exports their shared 214-byte key.
 - `watch_session_key.py` discovers the live world process and refreshes the
   ignored local key file across session changes.
+- `live_opcode_viewer.py` combines a filtered live capture, the runtime key
+  monitor, continuous C2S decryption, registry names, counters, and labeled
+  action markers in a Windows GUI.
 - `scan_process_rsa_public.py` locates runtime public-key objects.
 - `scan_process_range.py` performs bounded pattern searches.
 - `export_openssl_rsa.py` validates and exports all private/CRT components.
@@ -838,6 +841,9 @@ The C2S cipher satisfies every criterion defined before the breakthrough:
   84.87 seconds and 12.99 GB to 6.83 seconds and 2.44 GB.
 - Made connection and process-access failures visible even in quiet monitor
   mode, including the elevation mismatch that invalidated the initial timing.
+- Added a live C2S opcode viewer that keeps keys in memory, hides regular time
+  packets by default, and records user-labeled action markers beside decrypted
+  packets in an ignored local JSONL timeline.
 
 ### October 9, 2026
 

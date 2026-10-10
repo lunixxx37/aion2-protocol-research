@@ -3,7 +3,7 @@
 This guide explains which components are implemented and how to use them as the
 foundation for an Aion 2 protocol client or offline capture decoder. The
 documented snapshot is the Global Windows client revision `3527`, observed on
-October 9, 2026.
+October 10, 2026.
 
 ## 1. Installation
 
@@ -98,7 +98,43 @@ The RC4 key is the complete 214-byte OAEP plaintext. There is no KDF, IV,
 RC4-drop, or frame-boundary reset. Only C2S body bytes consume keystream;
 unsigned-varint bytes do not.
 
-## 4. Decode an existing capture
+## 4. Map opcodes live
+
+The Windows live viewer combines capture, runtime key recovery, continuous
+C2S RC4, the opcode registry, action markers, and a small GUI:
+
+```powershell
+python tools/live_opcode_viewer.py
+```
+
+It automatically requests elevation. The default capture interface is
+`Ethernet`; use `--interface "INTERFACE_NAME"` when the active adapter has a
+different name. Start the viewer before creating the world connection. If the
+character is already in the world, the locator can warm its cached process
+addresses while the client remains open, but one later reconnect is still
+needed to capture the new connection's `10 36` handshake and start RC4 at byte
+zero.
+
+When the status reads `Session #N is decrypting live`:
+
+1. Enter a short action label such as `jump once`.
+2. Click `Reset before action`; this clears the display counters and inserts
+   the labeled marker into the persistent log.
+3. Perform only that action and remain idle briefly.
+4. Repeat with the next label and action.
+
+`01 36` time packets are hidden from the display by default but remain in the
+event log. The tool writes a timestamped PCAP and JSONL file below
+`artifacts/`; both are ignored by Git and the JSONL may contain decrypted
+packet bodies. The recovered session key is kept only in process memory.
+
+Run its deterministic stream test without opening the GUI:
+
+```powershell
+python tools/live_opcode_viewer.py --self-test
+```
+
+## 5. Decode an existing capture
 
 For a running original client, recover the active RC4 key directly from its two
 validated runtime state objects. The key and every address belong only to that
@@ -159,7 +195,7 @@ checks return to sub-millisecond reads.
 Every file below `artifacts/`, except its README, is ignored by Git. Handshake
 reports and plaintext samples may contain session values.
 
-## 5. Next implementation layers
+## 6. Next implementation layers
 
 A complete client still needs:
 
