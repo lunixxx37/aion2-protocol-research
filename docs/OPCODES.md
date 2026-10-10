@@ -31,7 +31,7 @@ Snapshot date: `2026-10-10`; client revisions:
 | `00 38` | `0x3800` | world | C2S | `CLIENT_SKILL_REQUEST` | 976 | 36, 37, 38, 43, 44, 45, 47, 48, 49 | inferred |
 | `00 61` | `0x6100` | world | S2C | `DUNGEON_RUN_STATE` | — | — | parser-based |
 | `00 8D` | `0x8D00` | world | S2C | `HP_UPDATE` | — | — | parser-based |
-| `00 91` | `0x9100` | world | C2S | `CLIENT_MAP_PERIODIC_VALUE` | 22 | 6 | inferred |
+| `00 91` | `0x9100` | world | C2S | `CLIENT_MAP_PERIODIC_VALUE` | 22 | 6 | locally-confirmed |
 | `01 36` | `0x3601` | world | C2S | `CLIENT_TIME` | 159,676 | 10 | locally-confirmed |
 | `01 37` | `0x3701` | world | C2S | `CLIENT_MOVEMENT_UPDATE` | 5,198 | 29, 30 | inferred |
 | `01 61` | `0x6101` | world | S2C | `DUNGEON_RESULT` | — | — | parser-based |
@@ -53,7 +53,7 @@ Snapshot date: `2026-10-10`; client revisions:
 | `09 38` | `0x3809` | world | S2C | `SKILL_CAST` | — | — | parser-based |
 | `0A 37` | `0x370A` | world | C2S | `CLIENT_FLIGHT_TRANSITION` | 14 | 40, 41 | locally-confirmed |
 | `0B 37` | `0x370B` | world | C2S | `CLIENT_FLIGHT_MOVEMENT` | 260 | 39 | locally-confirmed |
-| `0B 91` | `0x910B` | world | C2S | `CLIENT_MAP_PERIODIC_PULSE` | 19 | 2 | inferred |
+| `0B 91` | `0x910B` | world | C2S | `CLIENT_MAP_PERIODIC_PULSE` | 19 | 2 | locally-confirmed |
 | `0C 37` | `0x370C` | world | C2S | `CLIENT_SPECIAL_MOVEMENT_0C_TRANSITION` | 3 | 67 | inferred |
 | `0D 37` | `0x370D` | world | C2S | `CLIENT_SPECIAL_MOVEMENT_0D_UPDATE` | 16 | 29 | inferred |
 | `0E 37` | `0x370E` | world | C2S | `CLIENT_DODGE_REQUEST` | 120 | 61 | locally-confirmed |
@@ -203,7 +203,7 @@ All 16 distinct u32 values at offset 4 across 323 retained samples match publish
 
 ### `00 91` — `CLIENT_MAP_PERIODIC_VALUE`
 
-During a user-labelled 67.7-second map-open interval, the client emitted 65 identical samples at a mean interval of 1.058 seconds. A shorter earlier burst had the same payload and cadence. A controlled close/reopen test is still needed to determine the exact map function.
+A controlled map open-close-reopen test confirmed that this stream runs only while the map is open. After the close marker, one already-scheduled sample arrived 265 ms later, followed by a 17.251-second gap; transmission resumed 1.024 seconds after the reopen marker. Active samples arrive approximately every 1.05-1.10 seconds with an invariant u32 value of 1110. The exact map subsystem meaning of that value remains open.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|
@@ -320,7 +320,7 @@ High-rate flight movement stream associated with 0A 37 transitions. A deliberate
 
 ### `0B 91` — `CLIENT_MAP_PERIODIC_PULSE`
 
-During the same user-labelled 67.7-second map-open interval as 00 91, the client emitted 57 opcode-only samples at a mean interval of 1.204 seconds. The independent cadence shows that this is not a one-for-one acknowledgement of 00 91. A controlled close/reopen test remains pending.
+A controlled map open-close-reopen test confirmed this opcode-only stream runs only while the map is open. One already-scheduled pulse arrived 484 ms after the close marker, followed by a 17.064-second gap; transmission resumed 1.056 seconds after the reopen marker. Its approximately 1.204-second cadence is independent of 00 91, excluding a one-for-one acknowledgement relationship.
 
 | Offset | Type | Field | Status |
 |---|---|---|---|

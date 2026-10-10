@@ -115,9 +115,9 @@
       "directions": ["C2S"],
       "name": "CLIENT_MAP_PERIODIC_VALUE",
       "encryption": "rc4",
-      "confidence": "inferred",
+      "confidence": "locally-confirmed",
       "body_lengths": [6],
-      "notes": "During a user-labelled 67.7-second map-open interval, the client emitted 65 identical samples at a mean interval of 1.058 seconds. A shorter earlier burst had the same payload and cadence. A controlled close/reopen test is still needed to determine the exact map function.",
+      "notes": "A controlled map open-close-reopen test confirmed that this stream runs only while the map is open. After the close marker, one already-scheduled sample arrived 265 ms later, followed by a 17.251-second gap; transmission resumed 1.024 seconds after the reopen marker. Active samples arrive approximately every 1.05-1.10 seconds with an invariant u32 value of 1110. The exact map subsystem meaning of that value remains open.",
       "fields": [
         {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"},
         {"offset": 2, "type": "u32le", "name": "map_periodic_value", "status": "observed; 1110 in both retained live bursts, exact meaning unknown"}
@@ -687,9 +687,9 @@
       "directions": ["C2S"],
       "name": "CLIENT_MAP_PERIODIC_PULSE",
       "encryption": "rc4",
-      "confidence": "inferred",
+      "confidence": "locally-confirmed",
       "body_lengths": [2],
-      "notes": "During the same user-labelled 67.7-second map-open interval as 00 91, the client emitted 57 opcode-only samples at a mean interval of 1.204 seconds. The independent cadence shows that this is not a one-for-one acknowledgement of 00 91. A controlled close/reopen test remains pending.",
+      "notes": "A controlled map open-close-reopen test confirmed this opcode-only stream runs only while the map is open. One already-scheduled pulse arrived 484 ms after the close marker, followed by a 17.064-second gap; transmission resumed 1.056 seconds after the reopen marker. Its approximately 1.204-second cadence is independent of 00 91, excluding a one-for-one acknowledgement relationship.",
       "fields": [
         {"offset": 0, "type": "bytes[2]", "name": "opcode", "status": "confirmed"}
       ]
